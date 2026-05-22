@@ -20,6 +20,9 @@ packages = ["src/tj_utils"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+markers = [
+    "integration: Docker-based integration tests requiring a running stack",
+]
 
 [tool.ruff]
 src = ["src"]

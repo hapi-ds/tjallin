@@ -1,4 +1,4 @@
-project acme_web "Acme Web Platform" 2024-01-15 +16w {
+project acme_web "Acme Web Platform" 2024-01-15 +26w {
   timezone "Europe/Stockholm"
   timeformat "%Y-%m-%d"
   numberformat "-" "" "," "." 1

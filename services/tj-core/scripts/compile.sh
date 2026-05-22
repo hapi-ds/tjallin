@@ -20,7 +20,7 @@ rm -rf "${REPORT_DIR:?}"/*
 # Run tj3 compilation
 log "INFO" "Starting project compilation: $PROJECT_FILE"
 
-if tj3_output=$(tj3 "$PROJECT_FILE" 2>&1); then
+if tj3_output=$(tj3 -o "$REPORT_DIR" "$PROJECT_FILE" 2>&1); then
     # Success: count generated reports and log
     report_count=$(find "$REPORT_DIR" -type f | wc -l)
     log "INFO" "Project compilation completed: $report_count reports generated"

@@ -1,15 +1,13 @@
 FROM alpine:3.19
 
-# Install Postfix for MTA, maildrop for local delivery, ripmime for MIME extraction, and utilities
+# Install Postfix for MTA, ripmime for MIME extraction, and utilities
+# Note: maildrop is not available in Alpine 3.19; using Postfix pipe transport instead
+# cyrus-sasl-plain/login are provided by cyrus-sasl package in Alpine 3.19
 RUN apk add --no-cache \
       postfix \
-      maildrop \
       bash \
       ca-certificates \
       cyrus-sasl \
-      cyrus-sasl-plain \
-      cyrus-sasl-login \
-      mailx \
       ripmime \
       coreutils
 

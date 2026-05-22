@@ -85,7 +85,7 @@ taskreport TaskList "Task List" {
   timeformat "%Y-%m-%d"
   loadunit days
   hideresource @all
-  sortmode plan.start.up
+  sorttasks plan.start.up
   caption "Complete task listing with schedule, effort, cost, and completion status."
 }
 
@@ -98,7 +98,7 @@ accountreport CostReport "Cost Report" {
   headline "Acme Web Platform — Financial Summary"
   columns no,
          name,
-         total,
+         cost,
          weekly
   timeformat "%Y-%m-%d"
   caption "Financial breakdown by cost account showing planned expenditure over time."
