@@ -10,12 +10,15 @@ RUN apt-get update && \
 RUN gem install taskjuggler --no-document
 
 # Create application directories
-RUN mkdir -p /app/project /app/reports /app/timesheets /app/scripts
+RUN mkdir -p /app/project /app/reports /app/timesheets /app/scripts /app/shared
+
+# Copy shared validation logic
+COPY services/shared/validate-env.sh /app/shared/validate-env.sh
 
 # Copy entrypoint and scripts
-COPY entrypoint.sh /app/entrypoint.sh
-COPY scripts/ /app/scripts/
-RUN chmod +x /app/entrypoint.sh /app/scripts/*.sh
+COPY services/tj-core/entrypoint.sh /app/entrypoint.sh
+COPY services/tj-core/scripts/ /app/scripts/
+RUN chmod +x /app/entrypoint.sh /app/scripts/*.sh /app/shared/validate-env.sh
 
 # Health check: verify tj3 is installed and working
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \

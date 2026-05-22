@@ -2,6 +2,12 @@
 set -uo pipefail
 
 SERVICE_NAME="tj-web"
+
+# Source shared defaults — provides sensible values when .env is absent
+if [ -f /app/shared/validate-env.sh ]; then
+    source /app/shared/validate-env.sh
+fi
+
 MIN_RESTART_INTERVAL=30
 REPORT_DIR="/app/reports"
 STATIC_DIR="/app/static"

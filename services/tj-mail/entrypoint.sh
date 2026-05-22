@@ -2,6 +2,12 @@
 set -euo pipefail
 
 SERVICE_NAME="tj-mail"
+
+# Source shared defaults — provides sensible values when .env is absent
+if [ -f /app/shared/validate-env.sh ]; then
+    source /app/shared/validate-env.sh
+fi
+
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 # --- Validate required environment variables ---

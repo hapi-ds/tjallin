@@ -1,0 +1,94 @@
+services:
+  tj-core:
+    build:
+      context: .
+      dockerfile: services/tj-core/Dockerfile
+    volumes:
+      - ${TJ_PROJECT_PATH:-./project}:/app/project
+      - report-data:/app/reports
+      - timesheet-data:/app/timesheets:ro
+    env_file:
+      - path: .env
+        required: false
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "tj3", "--version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - tj-net
+
+  tj-web:
+    build:
+      context: .
+      dockerfile: services/tj-web/Dockerfile
+    ports:
+      - "${TJ_WEB_PORT:-8080}:8080"
+    volumes:
+      - report-data:/app/reports:ro
+      - ${TJ_PROJECT_PATH:-./project}:/app/project
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      tj-core:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - tj-net
+
+  tj-mail:
+    build:
+      context: .
+      dockerfile: services/tj-mail/Dockerfile
+    volumes:
+      - timesheet-data:/app/timesheets
+      - mail-spool:/var/spool/postfix
+    env_file:
+      - path: .env
+        required: false
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "postfix", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - tj-net
+
+  tj-cron:
+    build:
+      context: .
+      dockerfile: services/tj-cron/Dockerfile
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      tj-mail:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "pgrep", "supercronic"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - tj-net
+
+volumes:
+  project-data:
+  report-data:
+  timesheet-data:
+  mail-spool:
+
+networks:
+  tj-net:
+    driver: bridge

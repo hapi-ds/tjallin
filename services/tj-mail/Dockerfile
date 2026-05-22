@@ -14,12 +14,15 @@ RUN apk add --no-cache \
       coreutils
 
 # Create application directories
-RUN mkdir -p /app/timesheets /app/scripts /etc/postfix
+RUN mkdir -p /app/timesheets /app/scripts /app/shared /etc/postfix
+
+# Copy shared validation logic
+COPY services/shared/validate-env.sh /app/shared/validate-env.sh
 
 # Copy entrypoint and scripts
-COPY entrypoint.sh /app/entrypoint.sh
-COPY scripts/ /app/scripts/
-RUN chmod +x /app/entrypoint.sh /app/scripts/*.sh
+COPY services/tj-mail/entrypoint.sh /app/entrypoint.sh
+COPY services/tj-mail/scripts/ /app/scripts/
+RUN chmod +x /app/entrypoint.sh /app/scripts/*.sh /app/shared/validate-env.sh
 
 # Expose SMTP port (internal only)
 EXPOSE 25

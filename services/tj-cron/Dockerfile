@@ -18,12 +18,16 @@ RUN curl -fsSL "https://github.com/aptible/supercronic/releases/download/${SUPER
     chmod +x /usr/local/bin/supercronic
 
 # Create application directories
-RUN mkdir -p /app/scripts
+RUN mkdir -p /app/scripts /app/shared
+
+# Copy shared validation logic
+COPY services/shared/validate-env.sh /app/shared/validate-env.sh
 
 # Copy entrypoint and scripts
-COPY entrypoint.sh /app/entrypoint.sh
-COPY scripts/ /app/scripts/
-RUN chmod +x /app/entrypoint.sh /app/scripts/*.sh 2>/dev/null || true
+COPY services/tj-cron/entrypoint.sh /app/entrypoint.sh
+COPY services/tj-cron/scripts/ /app/scripts/
+RUN chmod +x /app/entrypoint.sh /app/shared/validate-env.sh && \
+    chmod +x /app/scripts/*.sh 2>/dev/null || true
 
 # Health check: verify supercronic process is running
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
