@@ -1,0 +1,176 @@
+/* Task Definitions — Acme Web Platform
+ *
+ * Four-phase hierarchical task structure demonstrating:
+ * - Task dependencies creating a visible critical path
+ * - Resource leveling (overlapping allocations)
+ * - Milestones marking phase boundaries
+ * - Cost account assignments via chargeset
+ */
+
+task acme "Acme Web Platform" {
+
+  /* ===================================================================
+   * Phase 1: Planning (2 weeks)
+   * =================================================================== */
+  task planning "Phase 1: Planning" {
+
+    task requirements "Requirements Gathering" {
+      effort 5d
+      allocate eve
+      allocate alice
+      chargeset cost.mgmt
+    }
+
+    task architecture "Architecture Design" {
+      effort 5d
+      allocate alice
+      depends !requirements
+      chargeset cost.dev.backend
+    }
+
+    task wireframes "UX Wireframes" {
+      effort 5d
+      allocate carol
+      chargeset cost.design
+    }
+
+    task planning_complete "Planning Complete" {
+      milestone
+      depends !requirements, !architecture, !wireframes
+    }
+  }
+
+  /* ===================================================================
+   * Phase 2: Development (6 weeks)
+   * =================================================================== */
+  task development "Phase 2: Development" {
+    depends !planning.planning_complete
+
+    task backend "Backend API" {
+
+      task schema "Database Schema" {
+        effort 5d
+        allocate alice
+        chargeset cost.dev.backend
+      }
+
+      task endpoints "REST Endpoints" {
+        effort 15d
+        allocate alice
+        allocate bob
+        depends !schema
+        chargeset cost.dev.backend
+      }
+
+      task auth "Authentication" {
+        effort 10d
+        allocate alice
+        depends !schema
+        chargeset cost.dev.backend
+      }
+    }
+
+    task frontend "Frontend UI" {
+
+      task components "Component Library" {
+        effort 10d
+        allocate bob
+        allocate carol
+        chargeset cost.dev.frontend
+      }
+
+      task layouts "Page Layouts" {
+        effort 10d
+        allocate bob
+        depends !components
+        chargeset cost.dev.frontend
+      }
+
+      task integration "API Integration" {
+        effort 10d
+        allocate bob
+        depends !layouts, acme.development.backend.endpoints
+        chargeset cost.dev.frontend
+      }
+    }
+
+    task feature_complete "Feature Complete" {
+      milestone
+      depends !backend, !frontend
+    }
+  }
+
+  /* ===================================================================
+   * Phase 3: Testing (4 weeks)
+   * =================================================================== */
+  task testing "Phase 3: Testing" {
+    depends !development.feature_complete
+
+    task unit_tests "Unit Test Suite" {
+      effort 10d
+      allocate dave
+      chargeset cost.qa
+    }
+
+    task integration_tests "Integration Testing" {
+      effort 10d
+      allocate dave
+      allocate bob
+      depends !unit_tests
+      chargeset cost.qa
+    }
+
+    task performance "Performance Testing" {
+      effort 5d
+      allocate dave
+      depends !unit_tests
+      chargeset cost.qa
+    }
+
+    task uat "User Acceptance Testing" {
+      effort 10d
+      allocate eve
+      allocate carol
+      depends !unit_tests
+      chargeset cost.qa
+    }
+
+    task release_candidate "Release Candidate" {
+      milestone
+      depends !unit_tests, !integration_tests, !performance, !uat
+    }
+  }
+
+  /* ===================================================================
+   * Phase 4: Deployment (2 weeks)
+   * =================================================================== */
+  task deployment "Phase 4: Deployment" {
+    depends !testing.release_candidate
+
+    task infra "Infrastructure Setup" {
+      effort 3d
+      allocate alice
+      chargeset cost.dev.backend
+    }
+
+    task staging "Staging Deployment" {
+      effort 3d
+      allocate alice
+      allocate dave
+      depends !infra
+      chargeset cost.dev.backend
+    }
+
+    task production "Production Deployment" {
+      effort 2d
+      allocate alice
+      depends !staging
+      chargeset cost.dev.backend
+    }
+
+    task go_live "Go Live" {
+      milestone
+      depends !infra, !staging, !production
+    }
+  }
+}

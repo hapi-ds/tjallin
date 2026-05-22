@@ -1,0 +1,14 @@
+timesheet bob 2024-02-05 +1w {
+  task acme.development.frontend.layouts {
+    work 32h
+    status green "Page layouts completed" {
+      summary "Implemented responsive layouts for dashboard, settings, and content pages using the component library."
+    }
+  }
+  task acme.development.frontend.integration {
+    work 8h
+    status yellow "API integration started" {
+      summary "Set up HTTP client layer and began connecting authentication flow to backend endpoints."
+    }
+  }
+}

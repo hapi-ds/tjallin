@@ -1,0 +1,59 @@
+/* Resource Definitions — Acme Web Platform
+ *
+ * Defines team members with varying working hours, rates, skills,
+ * and vacation periods to demonstrate TaskJuggler's resource
+ * scheduling capabilities.
+ */
+
+/* Custom resource attribute for skill sets */
+extend resource {
+  text Skills "Skill Set"
+}
+
+resource alice "Alice" {
+  /* Senior Developer — full-time Mon–Fri */
+  workinghours mon - fri 9:00 - 17:00
+  workinghours sat, sun off
+  rate 950.0
+  Skills "backend, architecture"
+  vacation "Winter Break" 2024-02-19 - 2024-02-24
+  chargeset cost.dev.backend
+}
+
+resource bob "Bob" {
+  /* Full-Stack Developer — full-time Mon–Fri */
+  workinghours mon - fri 9:00 - 17:00
+  workinghours sat, sun off
+  rate 800.0
+  Skills "frontend, backend"
+  vacation "Easter" 2024-03-25 - 2024-03-30
+  chargeset cost.dev.frontend
+}
+
+resource carol "Carol" {
+  /* UX Designer — 6h/day Mon–Thu only */
+  workinghours mon - thu 9:00 - 15:00
+  workinghours fri, sat, sun off
+  rate 750.0
+  Skills "design, frontend"
+  chargeset cost.design
+}
+
+resource dave "Dave" {
+  /* QA Engineer — full-time Mon–Fri */
+  workinghours mon - fri 9:00 - 17:00
+  workinghours sat, sun off
+  rate 700.0
+  Skills "testing, automation"
+  vacation "Spring Break" 2024-04-01 - 2024-04-06
+  chargeset cost.qa
+}
+
+resource eve "Eve" {
+  /* Project Manager — 4h/day Mon–Fri */
+  workinghours mon - fri 9:00 - 13:00
+  workinghours sat, sun off
+  rate 900.0
+  Skills "management"
+  chargeset cost.mgmt
+}

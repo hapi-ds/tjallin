@@ -1,0 +1,13 @@
+account cost "Project Costs" {
+  account dev "Development" {
+    account backend "Backend Development"
+    account frontend "Frontend Development"
+  }
+  account design "Design"
+  account qa "Quality Assurance"
+  account mgmt "Project Management"
+}
+
+account revenue "Revenue" {
+  account contract "Contract Payment"
+}

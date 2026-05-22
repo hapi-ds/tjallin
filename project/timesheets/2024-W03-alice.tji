@@ -1,0 +1,14 @@
+timesheet alice 2024-01-29 +1w {
+  task acme.development.backend.schema {
+    work 32h
+    status green "Schema design completed" {
+      summary "Finalized database schema for all core entities including users, sessions, and content tables."
+    }
+  }
+  task acme.development.backend.endpoints {
+    work 8h
+    status yellow "Started endpoint scaffolding" {
+      summary "Set up project structure and implemented initial CRUD routes for user entity."
+    }
+  }
+}

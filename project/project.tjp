@@ -1,0 +1,14 @@
+project acme_web "Acme Web Platform" 2024-01-15 +16w {
+  timezone "Europe/Stockholm"
+  timeformat "%Y-%m-%d"
+  numberformat "-" "" "," "." 1
+  currencyformat "(" ")" "," "." 0
+  currency "SEK"
+  now 2024-02-05
+  trackingscenario plan
+}
+
+include "includes/accounts.tji"
+include "includes/resources.tji"
+include "includes/tasks.tji"
+include "includes/reports.tji"

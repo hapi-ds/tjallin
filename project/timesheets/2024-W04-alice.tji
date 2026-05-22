@@ -1,0 +1,14 @@
+timesheet alice 2024-02-05 +1w {
+  task acme.development.backend.endpoints {
+    work 30h
+    status yellow "REST endpoints progressing" {
+      summary "Implemented content and session endpoints with validation middleware and error handling."
+    }
+  }
+  task acme.development.backend.auth {
+    work 10h
+    status yellow "Authentication design started" {
+      summary "Evaluated JWT vs session-based auth, began implementing token issuance and verification."
+    }
+  }
+}

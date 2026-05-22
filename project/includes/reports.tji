@@ -1,0 +1,105 @@
+/* Report Definitions — Acme Web Platform
+ *
+ * Four report types demonstrating TaskJuggler's reporting flexibility:
+ * - GanttChart: visual project timeline with dependencies and critical path
+ * - ResourceUsage: resource allocation and utilization over time
+ * - TaskList: flat task listing with key metrics
+ * - CostReport: financial breakdown by cost account
+ */
+
+/* -------------------------------------------------------------------
+ * Macros — Reusable tooltip definitions for chart columns
+ * ------------------------------------------------------------------- */
+macro TaskTip [
+  tooltip istask() -8<-
+    '''Start: ''' <-query attribute='start'->
+    '''End: ''' <-query attribute='end'->
+    ----
+    '''Effort: ''' <-query attribute='effort'->
+    '''Duration: ''' <-query attribute='duration'->
+  ->8-
+]
+
+macro ResourceTip [
+  tooltip isresource() -8<-
+    '''Resource: ''' <-query attribute='name'->
+    ----
+    '''Effort: ''' <-query attribute='effort'->
+  ->8-
+]
+
+/* -------------------------------------------------------------------
+ * GanttChart — Full project Gantt chart
+ * Shows dependencies, milestones, and critical path highlighting.
+ * ------------------------------------------------------------------- */
+taskreport GanttChart "Gantt Chart" {
+  formats html
+  headline "Acme Web Platform — Project Gantt Chart"
+  columns bsi { title "WBS" },
+         name,
+         start { title "Start" },
+         end { title "End" },
+         effort,
+         duration,
+         chart { ${TaskTip} scale week width 800 }
+  timeformat "%Y-%m-%d"
+  loadunit days
+  hideresource @all
+  caption "Project schedule with task dependencies and milestones.
+           Critical path tasks are highlighted."
+}
+
+/* -------------------------------------------------------------------
+ * ResourceUsage — Resource allocation over time
+ * Shows utilization percentages and scheduling conflicts.
+ * ------------------------------------------------------------------- */
+resourcereport ResourceUsage "Resource Usage" {
+  formats html
+  headline "Acme Web Platform — Resource Utilization"
+  columns no,
+         name,
+         effort,
+         weekly { ${ResourceTip} width 800 }
+  timeformat "%Y-%m-%d"
+  loadunit hours
+  hidetask ~(isleaf() & isvalid(plan.effort))
+  caption "Resource allocation showing weekly utilization.
+           Over-allocated periods indicate scheduling conflicts resolved by the scheduler."
+}
+
+/* -------------------------------------------------------------------
+ * TaskList — Flat task list with key metrics
+ * Shows start/end dates, effort, cost, and completion status.
+ * ------------------------------------------------------------------- */
+taskreport TaskList "Task List" {
+  formats html
+  headline "Acme Web Platform — Task List"
+  columns bsi { title "WBS" },
+         name,
+         start { title "Start" },
+         end { title "End" },
+         effort,
+         cost,
+         complete,
+         status { width 150 }
+  timeformat "%Y-%m-%d"
+  loadunit days
+  hideresource @all
+  sortmode plan.start.up
+  caption "Complete task listing with schedule, effort, cost, and completion status."
+}
+
+/* -------------------------------------------------------------------
+ * CostReport — Financial breakdown by cost account
+ * Shows planned costs broken down by account hierarchy.
+ * ------------------------------------------------------------------- */
+accountreport CostReport "Cost Report" {
+  formats html
+  headline "Acme Web Platform — Financial Summary"
+  columns no,
+         name,
+         total,
+         weekly
+  timeformat "%Y-%m-%d"
+  caption "Financial breakdown by cost account showing planned expenditure over time."
+}
