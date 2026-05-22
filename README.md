@@ -1,1 +1,3 @@
 # tjallin
+
+**tjallin** (from "TaskJuggler All-In") provides an out-of-the-box, fully containerized environment for TaskJuggler, the powerful text-based project management tool. By leveraging Docker Compose, this setup orchestrates everything you need into a single stack: the TaskJuggler core, an automated web server to host compiled HTML reports, and an integrated open-source mail client for managing project communications and automated alerts.
