@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskJuggler — No Reports Available</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+
+        .container {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            padding: 3rem 2.5rem;
+            max-width: 540px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .icon {
+            font-size: 3rem;
+            margin-bottom: 1.5rem;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: #1a1a1a;
+        }
+
+        p {
+            font-size: 1rem;
+            line-height: 1.6;
+            color: #555;
+            margin-bottom: 1rem;
+        }
+
+        .hint {
+            background: #f0f4f8;
+            border: 1px solid #d0dae4;
+            border-radius: 6px;
+            padding: 1rem 1.25rem;
+            margin-top: 1.5rem;
+            text-align: left;
+        }
+
+        .hint-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            color: #4a6785;
+            margin-bottom: 0.5rem;
+        }
+
+        .hint code {
+            display: block;
+            background: #1a1a2e;
+            color: #e0e0e0;
+            padding: 0.6rem 0.8rem;
+            border-radius: 4px;
+            font-family: "SF Mono", "Fira Code", "Fira Mono", Menlo, Consolas, monospace;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            overflow-x: auto;
+        }
+
+        .status {
+            margin-top: 1.5rem;
+            font-size: 0.85rem;
+            color: #888;
+        }
+
+        .status span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #f0ad4e;
+            border-radius: 50%;
+            margin-right: 0.4rem;
+            vertical-align: middle;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+    </style>
+</head>
+<body>
+    <main class="container" role="main" aria-labelledby="page-title">
+        <div class="icon" aria-hidden="true">📊</div>
+        <h1 id="page-title">No Reports Available Yet</h1>
+        <p>
+            The TaskJuggler project has not been compiled yet, so there are no
+            reports to display. Reports will appear here automatically after the
+            first successful compilation.
+        </p>
+        <div class="hint">
+            <div class="hint-title">To generate reports now</div>
+            <p>Run the rebuild script from the project root:</p>
+            <code>./scripts/rebuild.sh</code>
+        </div>
+        <div class="status" aria-live="polite">
+            <span></span> Waiting for first compilation&hellip;
+        </div>
+    </main>
+</body>
+</html>
