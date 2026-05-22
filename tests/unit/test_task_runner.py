@@ -114,6 +114,119 @@ class TestCalculateElapsedTime:
         elapsed = calculate_elapsed_time(past)
         assert elapsed > 0
 
+    def test_elapsed_time_recent(self):
+        # A very recent time should give a small positive elapsed
+        from datetime import timedelta
+
+        recent = datetime.now(timezone.utc) - timedelta(seconds=5)
+        elapsed = calculate_elapsed_time(recent)
+        assert 4 <= elapsed <= 10
+
+
+class TestOverlapDetectionFlow:
+    """Tests for the full overlap detection scenario.
+
+    Validates that when a lock file exists with a valid start time,
+    the overlap detection flow correctly identifies the running task
+    and produces the appropriate warning log.
+    """
+
+    def test_overlap_detected_when_lock_exists(self):
+        """Lock file present → parse start time → calculate elapsed → format overlap log."""
+        with tempfile.NamedTemporaryFile(suffix=".lock", delete=False) as f:
+            lock_path = f.name
+
+        try:
+            Path(lock_path).unlink()
+            create_lock_file(lock_path)
+
+            # Simulate overlap detection flow
+            exists, content = check_lock_file(lock_path)
+            assert exists is True
+            assert content is not None
+
+            start_time = parse_lock_start_time(content)
+            assert start_time is not None
+
+            elapsed = calculate_elapsed_time(start_time)
+            assert elapsed >= 0
+
+            ts = datetime(2024, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
+            log = format_task_overlap_log("tj-cron", "compile", elapsed, timestamp=ts)
+            assert "skipped" in log
+            assert "compile" in log
+            assert "[WARNING]" in log
+        finally:
+            remove_lock_file(lock_path)
+
+    def test_no_overlap_when_lock_absent(self):
+        """No lock file → no overlap, task should proceed."""
+        exists, content = check_lock_file("/tmp/nonexistent_overlap_test.lock")
+        assert exists is False
+        assert content is None
+
+    def test_lock_cleanup_after_task(self):
+        """Lock file is removed after task execution completes."""
+        with tempfile.NamedTemporaryFile(suffix=".lock", delete=False) as f:
+            lock_path = f.name
+
+        try:
+            Path(lock_path).unlink()
+            create_lock_file(lock_path)
+            assert Path(lock_path).exists()
+
+            # Simulate task completion → cleanup
+            remove_lock_file(lock_path)
+            assert not Path(lock_path).exists()
+
+            # Verify no overlap detected after cleanup
+            exists, _ = check_lock_file(lock_path)
+            assert exists is False
+        finally:
+            # Safety cleanup
+            remove_lock_file(lock_path)
+
+    def test_lock_content_is_parseable(self):
+        """Lock file created by create_lock_file is parseable by parse_lock_start_time."""
+        with tempfile.NamedTemporaryFile(suffix=".lock", delete=False) as f:
+            lock_path = f.name
+
+        try:
+            Path(lock_path).unlink()
+            create_lock_file(lock_path)
+
+            _, content = check_lock_file(lock_path)
+            start_time = parse_lock_start_time(content)
+            assert start_time is not None
+            assert start_time.tzinfo is not None  # Should be timezone-aware
+        finally:
+            remove_lock_file(lock_path)
+
+
+class TestTimeoutHandling:
+    """Tests for timeout-related logging behavior."""
+
+    def test_timeout_log_contains_timeout_value(self):
+        """Timeout log includes the configured timeout duration."""
+        ts = datetime(2024, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
+        log = format_task_timeout_log("tj-cron", "compile", 300, timestamp=ts)
+        assert "300s" in log
+        assert "timed out" in log
+
+    def test_timeout_log_with_custom_timeout(self):
+        """Timeout log works with non-default timeout values."""
+        ts = datetime(2024, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
+        log = format_task_timeout_log("tj-cron", "collect-timesheets", 600, timestamp=ts)
+        assert "600s" in log
+        assert "collect-timesheets" in log
+        assert "[ERROR]" in log
+
+    def test_timeout_log_with_short_timeout(self):
+        """Timeout log works with very short timeout values."""
+        log = format_task_timeout_log("tj-cron", "quick-task", 10)
+        assert "10s" in log
+        assert "quick-task" in log
+
 
 class TestFormatTaskLogs:
     """Tests for task log formatting functions."""
