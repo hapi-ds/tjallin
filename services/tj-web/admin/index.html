@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskJuggler — Admin Panel</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f5f7fa;
+            color: #333;
+            padding: 2rem;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+        .subtitle { color: #666; margin-bottom: 2rem; font-size: 0.9rem; }
+        .status-bar {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+        .status-item { font-size: 0.85rem; }
+        .status-item strong { display: block; font-size: 1.1rem; color: #1a1a1a; }
+        .actions { display: flex; flex-direction: column; gap: 1rem; }
+        .action-card {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+        .action-info h3 { font-size: 1rem; margin-bottom: 0.25rem; }
+        .action-info p { font-size: 0.85rem; color: #666; }
+        button {
+            background: #2563eb;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 0.6rem 1.2rem;
+            font-size: 0.9rem;
+            cursor: pointer;
+            white-space: nowrap;
+            min-width: 100px;
+            transition: background 0.2s;
+        }
+        button:hover { background: #1d4ed8; }
+        button:disabled { background: #94a3b8; cursor: not-allowed; }
+        button.loading { background: #64748b; }
+        .result {
+            margin-top: 0.75rem;
+            padding: 0.6rem 0.8rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            display: none;
+        }
+        .result.success { display: block; background: #ecfdf5; border: 1px solid #6ee7b7; color: #065f46; }
+        .result.error { display: block; background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; }
+        .reports-link {
+            margin-top: 1.5rem;
+            text-align: center;
+        }
+        .reports-link a {
+            color: #2563eb;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+        .reports-link a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <h1>TaskJuggler Admin Panel</h1>
+    <p class="subtitle">Trigger operations and view system status</p>
+
+    <div class="status-bar" id="status-bar">
+        <div class="status-item"><strong id="report-count">—</strong> Reports</div>
+        <div class="status-item"><strong id="timesheet-count">—</strong> Timesheets</div>
+        <div class="status-item"><strong id="project-status">—</strong> Project</div>
+    </div>
+
+    <div class="actions">
+        <div class="action-card">
+            <div class="action-info">
+                <h3>Rebuild Reports</h3>
+                <p>Compile the project and regenerate all reports</p>
+            </div>
+            <button onclick="triggerAction('/api/rebuild', this)">Rebuild</button>
+        </div>
+        <div id="rebuild-result" class="result"></div>
+
+        <div class="action-card">
+            <div class="action-info">
+                <h3>Collect Timesheets</h3>
+                <p>Check for pending timesheet submissions</p>
+            </div>
+            <button onclick="triggerAction('/api/collect-timesheets', this)">Collect</button>
+        </div>
+        <div id="collect-timesheets-result" class="result"></div>
+
+        <div class="action-card">
+            <div class="action-info">
+                <h3>Send Reminders</h3>
+                <p>Send timesheet reminder emails to the team</p>
+            </div>
+            <button onclick="triggerAction('/api/send-reminders', this)">Send</button>
+        </div>
+        <div id="send-reminders-result" class="result"></div>
+    </div>
+
+    <div class="reports-link">
+        <a href="http://localhost:8080">← Back to Reports</a>
+    </div>
+
+    <script>
+        async function triggerAction(endpoint, btn) {
+            const resultId = endpoint.replace('/api/', '') + '-result';
+            const resultEl = document.getElementById(resultId);
+            
+            btn.disabled = true;
+            btn.classList.add('loading');
+            btn.textContent = '...';
+            resultEl.className = 'result';
+            resultEl.style.display = 'none';
+
+            try {
+                const res = await fetch(endpoint, { method: 'POST' });
+                const data = await res.json();
+                
+                resultEl.textContent = data.message;
+                if (data.details) resultEl.textContent += '\n' + data.details;
+                resultEl.className = 'result ' + (data.success ? 'success' : 'error');
+                
+                // Refresh status after action
+                loadStatus();
+            } catch (err) {
+                resultEl.textContent = 'Request failed: ' + err.message;
+                resultEl.className = 'result error';
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('loading');
+                btn.textContent = btn.closest('.action-card').querySelector('h3').textContent.split(' ').pop();
+            }
+        }
+
+        async function loadStatus() {
+            try {
+                const res = await fetch('/api/status');
+                const data = await res.json();
+                document.getElementById('report-count').textContent = data.report_count;
+                document.getElementById('timesheet-count').textContent = data.timesheet_count;
+                document.getElementById('project-status').textContent = data.project_exists ? '✓ Found' : '✗ Missing';
+            } catch (err) {
+                // Silently fail on status load
+            }
+        }
+
+        // Load status on page load
+        loadStatus();
+        // Refresh every 30 seconds
+        setInterval(loadStatus, 30000);
+    </script>
+</body>
+</html>

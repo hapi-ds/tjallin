@@ -84,12 +84,12 @@ if [ -n "$SMTP_USER" ] && [ -n "$SMTP_PASSWORD" ]; then
     chmod 600 /etc/postfix/sasl_passwd /etc/postfix/sasl_passwd.db
     echo "[$SERVICE_NAME] [$TIMESTAMP] [INFO] SMTP relay credentials configured for ${TJ_SMTP_HOST}:${TJ_SMTP_PORT}"
 else
-    # Create empty sasl_passwd to avoid Postfix errors
-    touch /etc/postfix/sasl_passwd
-    postmap /etc/postfix/sasl_passwd
-    chmod 600 /etc/postfix/sasl_passwd /etc/postfix/sasl_passwd.db
-    # Disable SASL auth if no credentials provided
+    # No credentials provided — disable SASL auth entirely
     postconf -e "smtp_sasl_auth_enable = no"
+    postconf -e "smtp_sasl_password_maps ="
+    # Create empty sasl_passwd so Postfix doesn't complain if referenced elsewhere
+    touch /etc/postfix/sasl_passwd
+    chmod 600 /etc/postfix/sasl_passwd
     echo "[$SERVICE_NAME] [$TIMESTAMP] [INFO] No SMTP credentials provided, relay authentication disabled"
 fi
 

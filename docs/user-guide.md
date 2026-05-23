@@ -16,9 +16,14 @@ This system provides a complete TaskJuggler environment packaged as a Docker Com
 |-------------|----------------|---------------|
 | Docker | 20.10+ | `docker --version` |
 | Docker Compose | 2.0+ (V2 plugin) | `docker compose version` |
-| Bash | 4.0+ (for manual scripts) | `bash --version` |
 
-The system runs on Linux, macOS, and Windows (via WSL2 or Docker Desktop).
+Optional (for convenience wrapper scripts on Linux/macOS/WSL):
+
+| Requirement | Minimum Version | Check Command |
+|-------------|----------------|---------------|
+| Bash | 4.0+ | `bash --version` |
+
+The system runs on Linux, macOS, and Windows (via Docker Desktop). All operations are executed inside Docker containers — no local TaskJuggler or Ruby installation is needed.
 
 ---
 
@@ -179,19 +184,32 @@ For full timesheet syntax details, see the [TaskJuggler Timesheet documentation]
 
 ## 4. Manual Operations
 
-Three scripts in the `scripts/` directory let you trigger operations on demand without waiting for the cron schedule.
+You can trigger operations on demand without waiting for the cron schedule.
 
-### How do I trigger a project rebuild?
+### Browser-based: Admin Panel
+
+The easiest way to trigger operations is through the admin panel in your browser:
+
+```
+http://localhost:9090
+```
+
+The admin panel provides:
+- **Rebuild Reports** button — compiles the project and regenerates all reports
+- **Collect Timesheets** button — shows current timesheet status
+- **Send Reminders** button — info about reminder scheduling
+- **System status** — shows report count, timesheet count, and project status
+
+The Rebuild button runs `tj3` directly inside the web container and updates reports immediately. After clicking Rebuild, refresh the reports page at `http://localhost:8080` to see the updated output.
+
+### Command-line: docker compose exec
+
+For command-line users, all operations run inside the Docker containers — you invoke them from your host terminal:
+
+#### Trigger a project rebuild
 
 ```bash
-./scripts/rebuild.sh
-```
-
-Expected output on success:
-
-```
-→ Triggering project compilation...
-✓ Compilation completed successfully.
+docker compose exec tj-core /app/scripts/compile.sh
 ```
 
 This runs the same compilation that the cron service executes every 15 minutes. Use it after modifying project files to see updated reports immediately.
@@ -199,14 +217,7 @@ This runs the same compilation that the cron service executes every 15 minutes. 
 ### How do I collect timesheets on demand?
 
 ```bash
-./scripts/collect-timesheets.sh
-```
-
-Expected output on success:
-
-```
-→ Triggering timesheet collection...
-✓ Timesheet collection completed successfully.
+docker compose exec tj-mail /app/scripts/collect-timesheets.sh
 ```
 
 This processes any pending timesheet emails that have arrived since the last collection.
@@ -214,61 +225,46 @@ This processes any pending timesheet emails that have arrived since the last col
 ### How do I send reminder emails manually?
 
 ```bash
-./scripts/send-reminders.sh
-```
-
-Expected output on success:
-
-```
-→ Triggering reminder emails...
-✓ Reminder emails sent successfully.
+docker compose exec tj-mail /app/scripts/send-reminders.sh
 ```
 
 This sends the same reminder emails that normally go out weekly on Monday at 09:00.
+
+### Convenience scripts (Linux/macOS/WSL)
+
+If you're on Linux, macOS, or WSL, the `scripts/` directory provides wrapper scripts with colored output and lock-file safety checks:
+
+```bash
+./scripts/rebuild.sh              # Trigger project compilation
+./scripts/collect-timesheets.sh   # Collect pending timesheets
+./scripts/send-reminders.sh       # Send reminder emails
+```
+
+These wrappers check that the target container is running and prevent duplicate executions. On Windows without WSL, use the `docker compose exec` commands above directly.
 
 ### Error scenarios
 
 #### Container not running
 
-```
-✗ Container 'tj-core' is not running.
-  Start the stack with: docker compose up -d
-```
+If you get an error like "no such service" or "container is not running":
 
 **Fix**: Start the stack first with `docker compose up -d`.
 
-#### Operation already in progress
+#### Operation already in progress (lock file)
 
-```
-⚠ Operation already in progress (lock file exists).
-  Lock info: 2024-01-15T10:30:00Z PID=42
-  If this is stale, remove it with: docker exec tj-core rm /tmp/tj-compile.lock
-```
-
-This means the same operation is already running (triggered by cron or another manual invocation). The system prevents duplicate executions.
-
-**If the lock is stale** (the previous run crashed without cleanup):
+The cron service uses lock files to prevent overlapping executions. If a previous run crashed without cleanup, you may need to remove a stale lock:
 
 ```bash
-docker exec tj-core rm /tmp/tj-compile.lock
+docker compose exec tj-core rm /tmp/tj-compile.lock
+docker compose exec tj-mail rm /tmp/tj-timesheets.lock
+docker compose exec tj-mail rm /tmp/tj-reminders.lock
 ```
 
-Then retry the script.
-
-#### Docker not available
-
-```
-✗ Docker CLI is not available.
-  Please install Docker: https://docs.docker.com/get-docker/
-```
-
-**Fix**: Install Docker or ensure it is in your `PATH`.
+Then retry the command.
 
 ### Script independence
 
-The manual scripts work independently of the cron service. They only require:
-1. Docker CLI available on the host
-2. The target service container running (`tj-core` or `tj-mail`)
+The manual commands work independently of the cron service. They only require the target service container to be running (`tj-core` or `tj-mail`).
 
 You can stop the cron service entirely and rely solely on manual triggers if preferred:
 

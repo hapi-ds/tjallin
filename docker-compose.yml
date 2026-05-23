@@ -25,8 +25,9 @@ services:
       dockerfile: services/tj-web/Dockerfile
     ports:
       - "${TJ_WEB_PORT:-8080}:8080"
+      - "${TJ_ADMIN_PORT:-9090}:9090"
     volumes:
-      - report-data:/app/reports:ro
+      - report-data:/app/reports
       - ${TJ_PROJECT_PATH:-./project}:/app/project
     env_file:
       - path: .env

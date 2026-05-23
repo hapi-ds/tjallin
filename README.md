@@ -11,9 +11,22 @@ git clone <repository-url> && cd tjallin
 cp .env.example .env        # edit .env to set SMTP credentials
 docker compose up -d
 open http://localhost:8080   # view generated reports
+open http://localhost:9090   # admin panel (rebuild, status)
 ```
 
 The included sample project compiles automatically on first startup. Edit `.env` to configure mail relay, schedules, and timezone.
+
+## Manual Operations
+
+Trigger operations on demand without waiting for the cron schedule:
+
+```bash
+docker compose exec tj-core /app/scripts/compile.sh          # Rebuild reports
+docker compose exec tj-mail /app/scripts/collect-timesheets.sh  # Process pending timesheets
+docker compose exec tj-mail /app/scripts/send-reminders.sh      # Send reminder emails
+```
+
+On Linux/macOS/WSL, convenience wrapper scripts are also available in `scripts/`.
 
 ## What's Included
 
@@ -21,7 +34,8 @@ The included sample project compiles automatically on first startup. Edit `.env`
 - **Web interface** — serves Gantt charts, resource usage, task lists, and cost reports via HTTP
 - **Mail service** — receives timesheet submissions by email and sends reminder notifications
 - **Cron orchestration** — automates compilation, timesheet collection, and reminders
-- **Manual trigger scripts** — `scripts/rebuild.sh`, `scripts/collect-timesheets.sh`, `scripts/send-reminders.sh` for on-demand operations
+- **Manual trigger scripts** — trigger compilation, timesheet collection, or reminders on demand via `docker compose exec`
+- **Admin panel** — browser-based interface at `http://localhost:9090` to trigger rebuilds and view system status
 
 ## Documentation
 
