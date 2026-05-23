@@ -1,10 +1,11 @@
 /* Report Definitions — Acme Web Platform
  *
- * Four report types demonstrating TaskJuggler's reporting flexibility:
+ * Five report types demonstrating TaskJuggler's reporting flexibility:
  * - GanttChart: visual project timeline with dependencies and critical path
  * - ResourceUsage: resource allocation and utilization over time
  * - TaskList: flat task listing with key metrics
  * - CostReport: financial breakdown by cost account
+ * - JournalReport: project journal entries sorted by date
  */
 
 /* -------------------------------------------------------------------
@@ -102,4 +103,17 @@ accountreport CostReport "Cost Report" {
          weekly
   timeformat "%Y-%m-%d"
   caption "Financial breakdown by cost account showing planned expenditure over time."
+}
+
+/* -------------------------------------------------------------------
+ * JournalReport — Project journal entries
+ * Shows status updates and notes recorded against tasks, sorted by
+ * date (newest first). Tasks without journal entries are hidden.
+ * ------------------------------------------------------------------- */
+taskreport JournalReport "Project Journal" {
+  formats html
+  headline "Project Journal"
+  columns name, journal
+  journalmode journal
+  journalattributes headline, author, date, summary
 }

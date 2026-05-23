@@ -1,9 +1,10 @@
 FROM ruby:3.2-slim
 
-# Install build dependencies for native gem extensions
+# Install build dependencies for native gem extensions and Python 3 for post-processing
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       build-essential \
+      python3 \
       && rm -rf /var/lib/apt/lists/*
 
 # Install TaskJuggler gem
@@ -14,6 +15,10 @@ RUN mkdir -p /app/project /app/reports /app/timesheets /app/scripts /app/shared
 
 # Copy shared validation logic
 COPY services/shared/validate-env.sh /app/shared/validate-env.sh
+
+# Copy Python post-processing utilities
+COPY src/tj_utils/ /app/src/tj_utils/
+COPY src/tj_utils/report_postprocess.py /app/src/report_postprocess.py
 
 # Copy entrypoint and scripts
 COPY services/tj-core/entrypoint.sh /app/entrypoint.sh

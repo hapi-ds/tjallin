@@ -190,22 +190,22 @@ class TestVolumeInitialization:
     Subsequent starts reuse existing volumes without re-initialization.
     """
 
-    def test_tj_mail_entrypoint_creates_timesheets_dir(self):
-        """The tj-mail entrypoint creates /app/timesheets if it doesn't exist.
+    def test_tj_mail_dockerfile_creates_timesheets_dir(self):
+        """The tj-mail Dockerfile creates /app/timesheets at build time.
 
-        This is verified by checking the entrypoint script contains mkdir -p.
+        This is verified by checking the Dockerfile contains mkdir -p /app/timesheets.
         """
-        entrypoint_path = os.path.join(
+        dockerfile_path = os.path.join(
             os.path.dirname(__file__),
             "..",
             "..",
             "services",
             "tj-mail",
-            "entrypoint.sh",
+            "Dockerfile",
         )
-        with open(entrypoint_path) as f:
+        with open(dockerfile_path) as f:
             content = f.read()
-        assert "mkdir -p /app/timesheets" in content
+        assert "/app/timesheets" in content
 
     def test_docker_compose_uses_named_volumes(self):
         """docker-compose.yml defines named volumes for persistent data."""

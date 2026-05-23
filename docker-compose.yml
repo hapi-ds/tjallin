@@ -48,9 +48,12 @@ services:
     build:
       context: .
       dockerfile: services/tj-mail/Dockerfile
+    ports:
+      - "127.0.0.1:${TJ_IMAP_PORT:-1143}:143"
     volumes:
       - timesheet-data:/app/timesheets
       - mail-spool:/var/spool/postfix
+      - maildir-data:/var/mail
     env_file:
       - path: .env
         required: false
@@ -89,6 +92,7 @@ volumes:
   report-data:
   timesheet-data:
   mail-spool:
+  maildir-data:
 
 networks:
   tj-net:

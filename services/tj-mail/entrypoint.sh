@@ -3,68 +3,66 @@ set -euo pipefail
 
 SERVICE_NAME="tj-mail"
 
-# Source shared defaults — provides sensible values when .env is absent
-if [ -f /app/shared/validate-env.sh ]; then
-    source /app/shared/validate-env.sh
-fi
+# --- Log helpers ---
+log_info() {
+    echo "[$SERVICE_NAME] [$(date -u +"%Y-%m-%dT%H:%M:%SZ")] [INFO] $1"
+}
 
-TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+log_error() {
+    echo "[$SERVICE_NAME] [$(date -u +"%Y-%m-%dT%H:%M:%SZ")] [ERROR] $1" >&2
+}
 
-# --- Validate required environment variables ---
-
-MISSING_VARS=""
+# --- Step 1: Validate required environment variables ---
 
 if [ -z "${TJ_MAIL_DOMAIN:-}" ]; then
-    MISSING_VARS="${MISSING_VARS} TJ_MAIL_DOMAIN"
-fi
-
-if [ -z "${TJ_SMTP_HOST:-}" ]; then
-    MISSING_VARS="${MISSING_VARS} TJ_SMTP_HOST"
-fi
-
-if [ -z "${TJ_SMTP_PORT:-}" ]; then
-    MISSING_VARS="${MISSING_VARS} TJ_SMTP_PORT"
-fi
-
-if [ -n "$MISSING_VARS" ]; then
-    echo "[$SERVICE_NAME] [$TIMESTAMP] [ERROR] Missing required environment variables:${MISSING_VARS}"
-    echo "[$SERVICE_NAME] [$TIMESTAMP] [ERROR] Set these variables in your .env file before starting the mail service"
+    log_error "TJ_MAIL_DOMAIN is required but not set. Cannot start mail service."
     exit 1
 fi
 
-echo "[$SERVICE_NAME] [$TIMESTAMP] [INFO] Configuring Postfix for domain: ${TJ_MAIL_DOMAIN}"
+log_info "Starting mail service for domain: ${TJ_MAIL_DOMAIN}"
 
-# --- Configure Postfix main.cf ---
+# --- Step 2: Provision mail users ---
+
+log_info "Provisioning mail users..."
+if [ -x /scripts/provision-users.sh ]; then
+    /scripts/provision-users.sh
+elif [ -x /app/scripts/provision-users.sh ]; then
+    /app/scripts/provision-users.sh
+else
+    log_error "provision-users.sh not found"
+    exit 1
+fi
+
+# --- Step 3: Configure Postfix for local-only delivery ---
+
+log_info "Configuring Postfix for local delivery"
 
 cat > /etc/postfix/main.cf <<EOF
-# Basic configuration
+# Basic host identity
 myhostname = mail.${TJ_MAIL_DOMAIN}
 mydomain = ${TJ_MAIL_DOMAIN}
 myorigin = \$mydomain
-mydestination = \$myhostname, \$mydomain, localhost.\$mydomain, localhost
+
+# Accept mail for the local domain
+mydestination = \$myhostname, localhost, ${TJ_MAIL_DOMAIN}
+
+# Listen on all interfaces (container-internal)
 inet_interfaces = all
 inet_protocols = ipv4
 
-# Mailbox configuration
+# Local delivery to Maildir
+local_transport = local
 home_mailbox = Maildir/
-mailbox_size_limit = 0
-message_size_limit = 5242880
 
-# Local delivery via pipe transport (configured below)
-local_transport = timesheet
+# Message size limit: 5 MB
+message_size_limit = 5242880
+mailbox_size_limit = 0
 
 # Network configuration - accept mail from Docker network
 mynetworks = 127.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 10.0.0.0/8
 
-# SMTP relay configuration for outbound mail
-relayhost = [${TJ_SMTP_HOST}]:${TJ_SMTP_PORT}
-
-# SMTP authentication for relay
-smtp_sasl_auth_enable = yes
-smtp_sasl_password_maps = hash:/etc/postfix/sasl_passwd
-smtp_sasl_security_options = noanonymous
-smtp_tls_security_level = encrypt
-smtp_tls_CAfile = /etc/ssl/certs/ca-certificates.crt
+# Reject mail to non-local domains (554)
+smtpd_recipient_restrictions = reject_unauth_destination
 
 # Queue configuration
 queue_directory = /var/spool/postfix
@@ -73,58 +71,31 @@ queue_directory = /var/spool/postfix
 maillog_file = /dev/stdout
 EOF
 
-# --- Set up SMTP relay credentials ---
+# --- Optional relay support ---
 
-SMTP_USER="${TJ_SMTP_USER:-}"
-SMTP_PASSWORD="${TJ_SMTP_PASSWORD:-}"
-
-if [ -n "$SMTP_USER" ] && [ -n "$SMTP_PASSWORD" ]; then
-    echo "[${TJ_SMTP_HOST}]:${TJ_SMTP_PORT} ${SMTP_USER}:${SMTP_PASSWORD}" > /etc/postfix/sasl_passwd
-    postmap /etc/postfix/sasl_passwd
-    chmod 600 /etc/postfix/sasl_passwd /etc/postfix/sasl_passwd.db
-    echo "[$SERVICE_NAME] [$TIMESTAMP] [INFO] SMTP relay credentials configured for ${TJ_SMTP_HOST}:${TJ_SMTP_PORT}"
+if [ -n "${TJ_SMTP_RELAY_HOST:-}" ]; then
+    RELAY_PORT="${TJ_SMTP_RELAY_PORT:-25}"
+    log_info "Configuring relay host: ${TJ_SMTP_RELAY_HOST}:${RELAY_PORT}"
+    postconf -e "relayhost = [${TJ_SMTP_RELAY_HOST}]:${RELAY_PORT}"
 else
-    # No credentials provided — disable SASL auth entirely
-    postconf -e "smtp_sasl_auth_enable = no"
-    postconf -e "smtp_sasl_password_maps ="
-    # Create empty sasl_passwd so Postfix doesn't complain if referenced elsewhere
-    touch /etc/postfix/sasl_passwd
-    chmod 600 /etc/postfix/sasl_passwd
-    echo "[$SERVICE_NAME] [$TIMESTAMP] [INFO] No SMTP credentials provided, relay authentication disabled"
+    log_info "No relay host configured — local-only delivery"
+    postconf -e "relayhost ="
 fi
-
-# --- Configure local delivery for timesheet processing ---
-
-# Set up Postfix pipe transport to route incoming mail through process-email.sh
-# This replaces maildrop with a custom script that validates and stores .tji attachments
-
-# Add the timesheet pipe transport to master.cf
-cat >> /etc/postfix/master.cf <<EOF
-
-# Timesheet processing pipe transport
-timesheet unix  -       n       n       -       10      pipe
-  flags=F user=nobody argv=/app/scripts/process-email.sh
-EOF
-
-# Configure Postfix to use the pipe transport for local delivery
-postconf -e "mailbox_command ="
-
-# Ensure timesheet directory exists and is writable
-mkdir -p /app/timesheets
-chmod 777 /app/timesheets
 
 # --- Ensure Postfix spool directories exist ---
 
 mkdir -p /var/spool/postfix
 postfix set-permissions 2>/dev/null || true
 
-# --- Start Postfix in foreground mode ---
+# --- Step 4: Start Dovecot in background ---
 
-TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-echo "[$SERVICE_NAME] [$TIMESTAMP] [INFO] Starting Postfix mail service"
-echo "[$SERVICE_NAME] [$TIMESTAMP] [INFO] Mail domain: ${TJ_MAIL_DOMAIN}"
-echo "[$SERVICE_NAME] [$TIMESTAMP] [INFO] SMTP relay: ${TJ_SMTP_HOST}:${TJ_SMTP_PORT}"
-echo "[$SERVICE_NAME] [$TIMESTAMP] [INFO] Listening on port 25 (internal)"
+log_info "Starting Dovecot IMAP server"
+dovecot -c /etc/dovecot/dovecot.conf
 
-# Start Postfix in foreground (daemon mode with stdout logging)
+# --- Step 5: Start Postfix in foreground ---
+
+log_info "Starting Postfix SMTP server"
+log_info "Mail domain: ${TJ_MAIL_DOMAIN}"
+log_info "Listening on SMTP port 25, IMAP port 143"
+
 exec postfix start-fg
