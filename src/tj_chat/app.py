@@ -52,6 +52,7 @@ def create_app() -> None:
     def _get_chat_service() -> "ChatService":
         """Get or create the shared ChatService instance."""
         from tj_chat.chat_service import ChatService
+        from tj_chat.project_reader import ProjectReader
         from tj_chat.tool_executor import ToolExecutor
 
         if "service" not in _chat_service_holder:
@@ -63,11 +64,18 @@ def create_app() -> None:
                 settings=settings,
                 tool_executor=tool_executor,
             )
-            # Attach TJ docs service
+            # Attach TJ docs service to both chat service and tool executor
             from tj_chat.tj_docs import TJDocumentationService
 
             tj_docs = TJDocumentationService(settings.tj_docs_path)
             service.tj_docs = tj_docs
+            tool_executor.tj_docs = tj_docs
+
+            # Build and set the system prompt with project context
+            reader = ProjectReader(settings.project_path)
+            project_summary = reader.get_project_summary()
+            service.set_system_prompt(project_summary)
+
             _chat_service_holder["service"] = service
             _chat_service_holder["tj_docs"] = tj_docs
         return _chat_service_holder["service"]

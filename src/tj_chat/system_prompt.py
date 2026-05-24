@@ -44,12 +44,14 @@ INCLUDE_FILE_DESCRIPTIONS: dict[str, str] = {
 def build_system_prompt(
     project_summary: ProjectSummary,
     tj_docs_service: TJDocumentationService | None = None,
+    token_limit: int = 4096,
 ) -> str:
     """Build the system prompt for the LLM agent.
 
     Assembles a comprehensive system prompt containing the role description,
     project structure, available tools, include file descriptions, and
-    optionally a condensed TaskJuggler syntax reference.
+    TaskJuggler syntax reference. When the token limit is large (>16K),
+    includes the full reference documentation; otherwise uses a condensed version.
 
     Args:
         project_summary: Summary of the project structure including file tree,
@@ -57,6 +59,8 @@ def build_system_prompt(
         tj_docs_service: Optional TJ documentation service for including
             syntax reference. If None or unavailable, the syntax section
             is omitted.
+        token_limit: The configured token limit. When >16000, the full
+            TJ reference is included instead of the condensed version.
 
     Returns:
         The complete system prompt string.
@@ -81,8 +85,8 @@ def build_system_prompt(
     # 6. Include file descriptions
     sections.append(_build_include_files_section())
 
-    # 7. Condensed TJ syntax reference (when available)
-    syntax_section = _build_syntax_section(tj_docs_service)
+    # 7. TJ syntax reference (full when token budget allows, condensed otherwise)
+    syntax_section = _build_syntax_section(tj_docs_service, token_limit)
     if syntax_section:
         sections.append(syntax_section)
 
@@ -161,14 +165,17 @@ def _build_include_files_section() -> str:
 
 def _build_syntax_section(
     tj_docs_service: TJDocumentationService | None,
+    token_limit: int = 4096,
 ) -> str:
     """Build the TJ syntax reference section.
 
-    Returns the condensed syntax reference from the documentation service,
-    or an empty string if documentation is unavailable.
+    When token_limit > 16000, includes the full reference documentation.
+    Otherwise returns the condensed syntax reference.
+    Returns empty string if documentation is unavailable.
 
     Args:
         tj_docs_service: Optional documentation service instance.
+        token_limit: Configured token limit to decide full vs condensed.
 
     Returns:
         Syntax reference string, or empty string if unavailable.
@@ -177,4 +184,6 @@ def _build_syntax_section(
         return ""
     if not tj_docs_service.is_available:
         return ""
+    if token_limit > 16000:
+        return tj_docs_service.get_full_reference()
     return tj_docs_service.get_syntax_reference()

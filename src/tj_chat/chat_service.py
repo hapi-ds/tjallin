@@ -596,7 +596,7 @@ class ChatService:
             project_summary: Summary of the project structure.
         """
         self._system_prompt = build_system_prompt(
-            project_summary, self._tj_docs
+            project_summary, self._tj_docs, self._settings.token_limit
         )
 
     @staticmethod

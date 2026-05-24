@@ -103,6 +103,21 @@ class TJDocumentationService:
 
         return "# TaskJuggler Syntax Reference\n\n" + "\n\n".join(parts)
 
+    def get_full_reference(self) -> str:
+        """Return the complete documentation content for all loaded sections.
+
+        Suitable for inclusion in system prompts when the token budget is large.
+        Returns empty string if docs unavailable.
+        """
+        if not self._available:
+            return ""
+
+        parts: list[str] = ["# TaskJuggler Complete Reference"]
+        for section in self._sections:
+            parts.append(section.content)
+
+        return "\n\n---\n\n".join(parts)
+
     @property
     def is_available(self) -> bool:
         """Whether documentation was successfully loaded."""
