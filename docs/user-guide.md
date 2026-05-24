@@ -191,16 +191,16 @@ You can trigger operations on demand without waiting for the cron schedule.
 The easiest way to trigger operations is through the admin panel in your browser:
 
 ```
-http://localhost:9090
+http://localhost:8080/admin
 ```
 
 The admin panel provides:
 - **Rebuild Reports** button — compiles the project and regenerates all reports
 - **Collect Timesheets** button — shows current timesheet status
 - **Send Reminders** button — info about reminder scheduling
-- **System status** — shows report count, timesheet count, and project status
+- **System status** — shows report count, timesheet count, project status, and LM Studio connection
 
-The Rebuild button runs `tj3` directly inside the web container and updates reports immediately. After clicking Rebuild, refresh the reports page at `http://localhost:8080` to see the updated output.
+The Rebuild button runs `tj3` directly inside the web container and updates reports immediately. After clicking Rebuild, navigate to the Reports page to see the updated output.
 
 ### Command-line: docker compose exec
 
@@ -427,6 +427,13 @@ cp .env.example .env
 | `TJ_TIMEZONE` | No | `UTC` | IANA timezone for all services and cron |
 | `TJ_LOG_LEVEL` | No | `INFO` | Log verbosity: `DEBUG`, `INFO`, `WARNING`, `ERROR` |
 | `TJ_TASK_TIMEOUT` | No | `300` | Cron task timeout in seconds (must be > 0) |
+| `TJ_CHAT_LM_STUDIO_URL` | No | `http://localhost:1234/v1` | URL of the LM Studio OpenAI-compatible API endpoint |
+| `TJ_CHAT_MODEL_NAME` | No | _(auto-detect)_ | Model name for chat completions; if unset, uses the first model available in LM Studio |
+| `TJ_CHAT_TOKEN_LIMIT` | No | `4096` | Maximum token limit for conversation history sent to the model |
+| `TJ_CHAT_CONNECTION_TIMEOUT` | No | `10` | Timeout in seconds for the initial connection to LM Studio |
+| `TJ_CHAT_RESPONSE_TIMEOUT` | No | `120` | Timeout in seconds for waiting for a model response |
+| `TJ_CHAT_DEFAULT_AUTHOR` | No | _(empty)_ | Default author resource ID for journal entries when not specified by the user |
+| `TJ_CHAT_TJ_DOCS_PATH` | No | `/app/tj-docs` | Path to bundled TaskJuggler reference documentation used by the agent for accurate syntax generation |
 
 If a required variable is missing or empty, the system refuses to start and prints an error identifying the missing variable.
 
@@ -725,3 +732,303 @@ The cron service drives the automated workflow:
 3. **Weekly Monday 09:00** (default): Triggers `tj-mail` to send reminder emails → team members are prompted to submit timesheets.
 
 All schedules are configurable via `.env`. The cron service prevents overlapping executions using lock files — if a task is still running when its next execution is due, the new execution is skipped and a warning is logged.
+
+
+---
+
+## 9. LLM Agent Chat
+
+The system includes a conversational AI agent that helps you manage your TaskJuggler project through natural language. The agent can review your project plan, update tasks and resources, write timesheet bookings, create journal entries, and generate report definitions — all from a browser-based chat interface.
+
+The agent runs entirely on your local machine using LM Studio for inference. No data is sent to external services.
+
+### Setting up LM Studio
+
+LM Studio provides the local LLM inference backend that powers the chat agent.
+
+#### Installation
+
+1. Download LM Studio from [lmstudio.ai](https://lmstudio.ai/) (version 0.2.x or later).
+2. Install it on the same machine running the Docker stack (or a machine reachable from the Docker host).
+3. Launch LM Studio and download a model. Recommended models for tool-calling:
+   - Qwen 2.5 Coder (7B or 14B)
+   - Mistral 7B Instruct
+   - Any model with function-calling support
+
+#### Starting the server
+
+1. In LM Studio, go to the **Local Server** tab (left sidebar).
+2. Select your downloaded model from the dropdown.
+3. Click **Start Server**. The server starts on `http://localhost:1234` by default.
+4. Verify the server is running — you should see "Server started" in the LM Studio status bar.
+
+#### Configuration
+
+Set the LM Studio URL in your `.env` file:
+
+```ini
+# Default — works when LM Studio runs on the same machine
+TJ_CHAT_LM_STUDIO_URL=http://localhost:1234/v1
+
+# If LM Studio runs on a different machine
+TJ_CHAT_LM_STUDIO_URL=http://192.168.1.100:1234/v1
+```
+
+When running inside Docker, the container needs to reach LM Studio on the host. On Docker Desktop (Windows/macOS), use:
+
+```ini
+TJ_CHAT_LM_STUDIO_URL=http://host.docker.internal:1234/v1
+```
+
+On Linux with Docker, use the host's IP address or add `--add-host=host.docker.internal:host-gateway` to the container configuration.
+
+Optionally pin a specific model:
+
+```ini
+TJ_CHAT_MODEL_NAME=qwen2.5-coder-14b-instruct
+```
+
+If `TJ_CHAT_MODEL_NAME` is not set, the agent automatically uses the first model loaded in LM Studio.
+
+---
+
+## 10. Web Interface
+
+The unified web application serves all functionality on a single port (default 8080). A navigation bar at the top of every page provides links to all sections.
+
+### Accessing the web interface
+
+| Page | URL | Description |
+|------|-----|-------------|
+| Home | `http://localhost:8080/` | Project status summary with report count, timesheet count, and quick links |
+| Reports | `http://localhost:8080/reports` | Browse and view TaskJuggler-generated HTML reports (Gantt charts, resource usage, etc.) |
+| Admin | `http://localhost:8080/admin` | Trigger project compilation, view system status, check LM Studio connection |
+| Chat | `http://localhost:8080/chat` | Conversational agent interface for project management |
+
+If you changed `TJ_WEB_PORT` in your `.env` file, replace `8080` with your configured port.
+
+### Reports page
+
+The reports page lists all HTML reports generated by the TaskJuggler compiler. Click any report to view it. If no reports have been generated yet, the page displays a message with a link to the admin page to trigger a rebuild.
+
+### Admin page
+
+The admin page shows:
+- **Project status** — whether the main `.tjp` file exists and is readable
+- **Report count** — number of generated HTML reports available
+- **Timesheet count** — number of timesheet files in the project
+- **LM Studio connection** — whether the chat agent can reach LM Studio
+- **Rebuild button** — triggers an immediate project compilation
+
+### Chat page
+
+The chat page provides a message input field and scrollable conversation history. Messages are visually distinguished by type:
+- **User messages** — your input, aligned to the right
+- **Agent responses** — the AI's replies, aligned to the left
+- **System messages** — status information (session start, commands)
+- **Tool actions** — summaries of actions the agent performed (file reads, writes, searches)
+
+When the agent proposes a file change, Accept and Decline buttons appear inline so you can review before committing.
+
+If LM Studio is not reachable, the chat page displays a connection error banner with the configured endpoint URL and a retry button. The reports and admin pages remain fully functional regardless of LM Studio availability.
+
+---
+
+## 11. Chat Commands
+
+The chat input supports slash commands for session management.
+
+### `/reset`
+
+Clears the current conversation history and starts a fresh session. The agent will re-analyze the project and provide a new status summary.
+
+```
+/reset
+```
+
+Use this when you want to start a new topic or if the conversation has become too long.
+
+### `/help`
+
+Displays available commands and a summary of what the agent can do.
+
+```
+/help
+```
+
+### Unknown commands
+
+If you type a slash command that is not recognized (e.g., `/foo`), the chat displays an error message and suggests using `/help` to see available commands.
+
+---
+
+## 12. Example Conversations
+
+Below are example interactions showing what the agent can help with.
+
+### Plan review
+
+```
+You: What's the current status of the project? Are there any overdue tasks?
+
+Agent: Here's a summary of the ACME Web project:
+
+- Project period: 2024-01-01 to 2024-06-30
+- 3 tasks are overdue:
+  • acme.dev.backend.schema — 5 days overdue (planned end: 2024-02-10)
+  • acme.dev.backend.endpoints — 2 days overdue (planned end: 2024-02-13)
+  • acme.design.wireframes — 1 day overdue (planned end: 2024-02-14)
+- Upcoming milestones (next 14 days):
+  • acme.dev.backend_complete — 2024-02-25
+- Missing timesheets this week: bob, carol
+
+Would you like me to suggest corrective actions for the overdue tasks?
+```
+
+### Task and resource updates
+
+```
+You: Add a new task "API documentation" under acme.dev.backend with 3d effort
+     allocated to alice
+
+Agent: I'll add the task to the backend section. Here's what I'll write:
+
+  File: includes/tasks.tji
+  Operation: modify
+  Change: Add task 'api_docs' under acme.dev.backend
+
+  task api_docs "API documentation" {
+    effort 3d
+    allocate alice
+  }
+
+  [Accept] [Decline]
+
+You: [clicks Accept]
+
+Agent: Done. The task "API documentation" has been added under acme.dev.backend
+and the project compiles successfully.
+
+You might also want to:
+- Add a dependency from api_docs to the endpoints task
+- Record a journal entry about this planning decision
+- Update the project timeline if this affects the backend_complete milestone
+```
+
+### Booking creation
+
+```
+You: Log 16 hours for alice on acme.dev.backend.schema this week, status green
+     "Schema design completed"
+
+Agent: I'll write a timesheet entry for alice. Here's the booking:
+
+  File: timesheets/2024-W07-alice.tji
+  Operation: create
+
+  timesheet alice 2024-02-12 +1w {
+    task acme.dev.backend.schema {
+      work 16h
+      status green "Schema design completed"
+    }
+  }
+
+  [Accept] [Decline]
+
+You: [clicks Accept]
+
+Agent: Timesheet saved to timesheets/2024-W07-alice.tji.
+
+Follow-up suggestions:
+- Log remaining hours for alice on other tasks this week
+- Update the schema task completion status
+- Record a journal entry about the schema completion
+```
+
+### Journal entry creation
+
+```
+You: Add a journal entry for today on acme.dev.backend.schema: "Decided to use
+     PostgreSQL with JSONB columns for flexible metadata storage"
+
+Agent: I'll create a journal entry. Here's what I'll write:
+
+  File: includes/tasks.tji
+  Operation: modify
+  Change: Append journal entry to task acme.dev.backend.schema
+
+  journalentry 2024-02-15 "Decided to use PostgreSQL with JSONB columns" {
+    author alice
+    summary "Decided to use PostgreSQL with JSONB columns for flexible
+             metadata storage"
+  }
+
+  [Accept] [Decline]
+
+You: [clicks Accept]
+
+Agent: Journal entry added to acme.dev.backend.schema.
+```
+
+### Report creation
+
+```
+You: Create a milestone report showing only milestones with their dates and
+     status, sorted by start date
+
+Agent: I'll generate a milestone report definition. Here's what I'll write:
+
+  File: includes/reports.tji
+  Operation: modify
+  Change: Add report definition 'milestone_overview'
+
+  taskreport milestone_overview "Milestone Overview" {
+    formats html
+    columns name, start, end, status
+    hidetask ~ismilestone(plan)
+    sorttasks plan.start.up
+  }
+
+  [Accept] [Decline]
+
+You: [clicks Accept]
+
+Agent: Report definition added. Run a rebuild from the Admin page (or wait for
+the next scheduled compilation) to generate the HTML output.
+```
+
+---
+
+## 13. TaskJuggler Documentation and the search_tj_docs Tool
+
+The agent has access to bundled TaskJuggler reference documentation that covers all major TJ constructs: project, task, resource, account, shift, vacation, timesheet, statussheet, journalentry, report types, macros, includes, and column identifiers.
+
+### How the agent uses documentation
+
+When a chat session starts, the agent's system prompt includes a condensed syntax reference covering the most commonly used TaskJuggler constructs. This helps the agent generate correct syntax for tasks, resources, timesheets, journal entries, and reports.
+
+For more detailed or obscure syntax questions, the agent can search the full documentation using the `search_tj_docs` tool. This happens automatically when the agent needs to look up specific attribute names, nesting rules, or supported value formats.
+
+### What this means for you
+
+- The agent produces more accurate TaskJuggler syntax because it references the official documentation rather than relying solely on training data.
+- You can ask the agent about TaskJuggler syntax directly (e.g., "What columns are available for a resource report?") and it will search the bundled docs to give you an accurate answer.
+- The documentation is bundled in the Docker image — no internet connection is required.
+
+### Degraded mode
+
+If the bundled documentation is missing or unreadable (e.g., `TJ_CHAT_TJ_DOCS_PATH` points to a non-existent directory), the agent continues to work using its built-in knowledge. A notice appears on the chat page indicating that enhanced TJ syntax support is unavailable. The `search_tj_docs` tool returns empty results in this mode.
+
+### Configuring the documentation path
+
+The documentation path is configured via the `TJ_CHAT_TJ_DOCS_PATH` environment variable:
+
+```ini
+# Default (inside Docker container)
+TJ_CHAT_TJ_DOCS_PATH=/app/tj-docs
+
+# Custom path (if you have your own TJ docs)
+TJ_CHAT_TJ_DOCS_PATH=/path/to/your/tj-docs
+```
+
+The documentation files are automatically bundled into the Docker image during the build process. You typically do not need to change this setting.

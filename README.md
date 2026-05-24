@@ -12,11 +12,15 @@ Clone, configure, and run — reports are visible in your browser within minutes
 git clone <repository-url> && cd tjallin
 cp .env.example .env        # edit .env to configure users and schedules
 docker compose up -d
-open http://localhost:8080   # view generated reports
-open http://localhost:9090   # admin panel (rebuild, status)
+open http://localhost:8080   # view generated reports and access admin/chat
 ```
 
 The included sample project compiles automatically on first startup. Edit `.env` to configure mail users, schedules, and timezone. The stack is fully self-contained — no external SMTP relay is needed.
+
+### Prerequisites
+
+- **Docker** and **Docker Compose** (v2+)
+- **LM Studio** 0.2+ (for the agent chat feature) — download from [lmstudio.ai](https://lmstudio.ai). Load a model and start the local server (OpenAI-compatible API on `http://localhost:1234/v1` by default). The chat feature degrades gracefully if LM Studio is not running; reports and admin remain fully functional.
 
 ## Manual Operations
 
@@ -35,12 +39,13 @@ On Linux/macOS/WSL, convenience wrapper scripts are also available in `scripts/`
 - **TaskJuggler core** — compiles `.tjp` project files and generates HTML/CSV reports on a configurable schedule
 - **Cross-linked reports** — every report includes a navigation header with links to all other reports, a Report Index page, and the admin panel
 - **Journal report** — displays project status entries and notes recorded against tasks, sorted newest-first
-- **Web interface** — serves Gantt charts, resource usage, task lists, cost reports, and journal entries via HTTP
+- **Unified web interface** — single NiceGUI app on port 8080 serving reports, admin panel, and agent chat
+- **LLM agent chat** — conversational project management at `/chat` powered by a local LM Studio model (see below)
 - **Self-contained mail service** — local SMTP delivery and IMAP access without external relay dependencies
 - **IMAP access** — connect any standard mail client (Thunderbird, Apple Mail, etc.) to read timesheet reminders and notifications
 - **Cron orchestration** — automates compilation, timesheet collection, and reminders
 - **Manual trigger scripts** — trigger compilation, timesheet collection, or reminders on demand via `docker compose exec`
-- **Admin panel** — browser-based interface at `http://localhost:9090` to trigger rebuilds and view system status
+- **Bundled TaskJuggler documentation** — reference docs are included in the Docker image for enhanced syntax accuracy during chat interactions
 
 ## Mail Service
 
@@ -79,6 +84,30 @@ TJ_SMTP_RELAY_PORT=25
 ```
 
 When unset, all mail is delivered locally.
+
+## LLM Agent Chat
+
+The agent chat provides a conversational interface for managing your TaskJuggler project at `http://localhost:8080/chat`. Powered by a locally-running LLM via LM Studio, it can:
+
+- **Review your project plan** — ask about tasks, resources, timelines, and dependencies in plain language
+- **Update tasks and resources** — modify attributes, add new tasks, or adjust dependencies through conversation
+- **Write timesheets** — log hours by describing what you worked on; the agent generates valid timesheet syntax
+- **Create journal entries** — dictate status updates and decisions that get recorded against tasks
+- **Generate reports** — request Gantt charts, resource reports, or custom views without learning report syntax
+- **Proactive guidance** — the agent highlights overdue tasks, upcoming milestones, and suggests next steps
+
+All file changes are validated through the tj3 compiler before persisting, and backups are created automatically. Write operations require explicit user confirmation.
+
+### Setup
+
+1. Install [LM Studio](https://lmstudio.ai) 0.2+ on your host machine
+2. Load a model (any model supporting tool/function calling works best)
+3. Start the LM Studio local server (defaults to `http://localhost:1234/v1`)
+4. Configure `TJ_CHAT_LM_STUDIO_URL` in `.env` if using a non-default endpoint
+
+The chat feature includes bundled TaskJuggler reference documentation for enhanced syntax accuracy — the agent references these docs to produce correct TJ constructs beyond what the LLM remembers from training data.
+
+If LM Studio is not running, the reports and admin pages remain fully functional; only the chat feature requires an active LM Studio connection.
 
 ## Documentation
 

@@ -1,31 +1,23 @@
-FROM ruby:3.2-slim
+FROM python:3.11-slim
 
-# Install build dependencies for native gem extensions and curl for health checks
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-      build-essential \
-      curl \
-      && rm -rf /var/lib/apt/lists/*
+# Install tj3 for compilation (Ruby + taskjuggler gem) and curl for health checks
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ruby curl && gem install taskjuggler --no-document && \
+    rm -rf /var/lib/apt/lists/*
 
-# Install TaskJuggler gem (provides tj3d and tj3webd)
-RUN gem install taskjuggler --no-document
+# Install uv
+RUN pip install uv
 
-# Create application directories
-RUN mkdir -p /app/project /app/reports /app/static /app/shared /app/admin
-
-# Copy shared validation logic
-COPY services/shared/validate-env.sh /app/shared/validate-env.sh
-
-# Copy entrypoint, static files, and admin panel
-COPY services/tj-web/entrypoint.sh /app/entrypoint.sh
-COPY services/tj-web/static/ /app/static/
-COPY services/tj-web/admin/ /app/admin/
-RUN chmod +x /app/entrypoint.sh /app/shared/validate-env.sh
-
-# Health check: verify web interface is responding
-HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-  CMD curl -f http://localhost:8080/ || exit 1
-
+# Copy project files needed for build
+COPY pyproject.toml uv.lock README.md /app/
+COPY src/ /app/src/
 WORKDIR /app
 
-ENTRYPOINT ["/app/entrypoint.sh"]
+# Install all dependencies and the project package
+RUN uv sync --frozen --no-dev
+
+# Bundle TaskJuggler reference documentation for offline availability
+COPY docs/tj-reference/ /app/tj-docs/
+
+EXPOSE 8080
+CMD ["uv", "run", "tj-web"]

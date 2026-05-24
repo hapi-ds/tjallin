@@ -25,10 +25,12 @@ services:
       dockerfile: services/tj-web/Dockerfile
     ports:
       - "${TJ_WEB_PORT:-8080}:8080"
-      - "${TJ_ADMIN_PORT:-9090}:9090"
     volumes:
-      - report-data:/app/reports
       - ${TJ_PROJECT_PATH:-./project}:/app/project
+      - report-data:/app/reports:ro
+    environment:
+      - TJ_CHAT_LM_STUDIO_URL=${TJ_CHAT_LM_STUDIO_URL:-http://host.docker.internal:1234/v1}
+      - TJ_CHAT_TJ_DOCS_PATH=${TJ_CHAT_TJ_DOCS_PATH:-/app/tj-docs}
     env_file:
       - path: .env
         required: false
@@ -37,7 +39,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/')"]
       interval: 30s
       timeout: 10s
       retries: 3
