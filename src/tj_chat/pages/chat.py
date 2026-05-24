@@ -52,20 +52,21 @@ class ChatPageUI:
     def setup(self) -> None:
         """Render the chat page UI components."""
         with ui.column().classes("w-full max-w-4xl mx-auto h-[calc(100vh-80px)] p-4"):
-            # Degraded mode banner when TJ docs are unavailable
+            # Degraded mode notice when TJ docs are unavailable
             if self._tj_docs is not None and not self._tj_docs.is_available:
-                with ui.banner().classes("w-full bg-amber-100 text-amber-900"):
-                    ui.icon("warning").classes("text-amber-700")
-                    ui.label(
-                        "Enhanced TaskJuggler syntax support is unavailable. "
-                        "The bundled documentation could not be loaded."
-                    )
+                with ui.card().classes("w-full bg-amber-100 text-amber-900 p-3"):
+                    with ui.row().classes("items-center gap-2"):
+                        ui.icon("warning").classes("text-amber-700")
+                        ui.label(
+                            "Enhanced TaskJuggler syntax support is unavailable. "
+                            "The bundled documentation could not be loaded."
+                        )
 
-            # Connection error banner (hidden by default, shown on connection failure)
+            # Connection error card (hidden by default, shown on connection failure)
             self._connection_banner = ui.column().classes("w-full hidden")
             with self._connection_banner:
-                with ui.banner().classes(
-                    "w-full bg-red-100 text-red-900 border border-red-300"
+                with ui.card().classes(
+                    "w-full bg-red-100 text-red-900 border border-red-300 p-3"
                 ):
                     with ui.row().classes("items-center gap-2 w-full"):
                         ui.icon("error").classes("text-red-700 text-xl")

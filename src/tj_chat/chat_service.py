@@ -420,12 +420,26 @@ class ChatService:
                 timeout=self._settings.connection_timeout,
             )
 
-            models = list(models_response)
+            # Extract model IDs - handle both standard OpenAI response
+            # and LM Studio's potentially different format
+            model_ids: list[str] = []
+            try:
+                # Standard openai library: response has .data attribute
+                data = models_response.data if hasattr(models_response, "data") else list(models_response)
+                for model in data:
+                    if hasattr(model, "id"):
+                        model_ids.append(model.id)
+                    elif isinstance(model, dict) and "id" in model:
+                        model_ids.append(model["id"])
+                    elif isinstance(model, str):
+                        model_ids.append(model)
+            except (TypeError, AttributeError):
+                pass
 
             if self._settings.model_name:
                 self._model_name = self._settings.model_name
-            elif models:
-                self._model_name = models[0].id
+            elif model_ids:
+                self._model_name = model_ids[0]
             else:
                 return ConnectionResult(
                     success=False,
