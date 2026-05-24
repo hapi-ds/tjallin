@@ -203,7 +203,7 @@ class AdminPageUI:
         try:
             process = await asyncio.create_subprocess_exec(
                 "tj3",
-                str(project_file),
+                self._settings.project_file,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 cwd=str(self._project_dir),

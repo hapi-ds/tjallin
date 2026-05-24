@@ -1,14 +1,21 @@
-project acme_web "Acme Web Platform" 2026-05-24 +26w {
+project acme_web "Acme Web Platform" 2026-05-25 +26w {
   timezone "Europe/Stockholm"
   timeformat "%Y-%m-%d"
-  numberformat "-" "" "," "." 1
-  currencyformat "(" ")" "," "." 0
-  currency "SEK"
-  now 2026-05-24
+  numberformat "-" "" "." "," 1
+  currencyformat "(" ")" "." "," 0
+  currency "EUR"
+  now 2026-05-25
+
+  /* Define two scenarios: plan (baseline) and actual (tracking) */
+  scenario plan "Planned" {
+    scenario actual "Actual"
+  }
+
   trackingscenario plan
 }
 
 include "includes/accounts.tji"
 include "includes/resources.tji"
 include "includes/tasks.tji"
+include "includes/bookings.tji"
 include "includes/reports.tji"

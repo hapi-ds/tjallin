@@ -1,10 +1,12 @@
 /* Task Definitions — Acme Web Platform
  *
- * Four-phase hierarchical task structure demonstrating:
- * - Task dependencies creating a visible critical path
- * - Resource leveling (overlapping allocations)
+ * Four-phase project demonstrating:
+ * - Hierarchical tasks with dependencies and critical path
+ * - Resource allocation with cost account assignments
  * - Milestones marking phase boundaries
- * - Cost account assignments via chargeset
+ * - Scenarios (plan vs actual) for tracking
+ * - Journal entries for status reporting
+ * - Revenue charges tied to milestones
  */
 
 task acme "Acme Web Platform" {
@@ -19,6 +21,11 @@ task acme "Acme Web Platform" {
       allocate eve
       allocate alice
       chargeset mgmt
+      journalentry 2026-05-26 "Kickoff meeting held" {
+        author eve
+        summary "Stakeholder kickoff completed. Key requirements identified.
+                 Budget confirmed at EUR 180,000."
+      }
     }
 
     task architecture "Architecture Design" {
@@ -26,46 +33,70 @@ task acme "Acme Web Platform" {
       allocate alice
       depends !requirements
       chargeset backend
+      journalentry 2026-06-02 "Architecture decision" {
+        author alice
+        summary "Decided on microservices with PostgreSQL and Redis.
+                 API-first approach with OpenAPI spec."
+      }
     }
 
     task wireframes "UX Wireframes" {
       effort 5d
       allocate carol
       chargeset design
+      journalentry 2026-06-03 "Wireframes v1 complete" {
+        author carol
+        summary "First iteration of wireframes delivered.
+                 Stakeholder feedback session scheduled for next week."
+      }
     }
 
     task planning_complete "Planning Complete" {
       milestone
       depends !requirements, !architecture, !wireframes
+      chargeset milestone1
+      charge 30000.0 onend
     }
   }
 
   /* ===================================================================
-   * Phase 2: Development (6 weeks)
+   * Phase 2: Development (8 weeks)
    * =================================================================== */
   task development "Phase 2: Development" {
     depends !planning.planning_complete
 
     task backend_api "Backend API" {
 
-      task schema "Database Schema" {
+      task schema "Database Schema & Migrations" {
         effort 5d
         allocate alice
         chargeset backend
       }
 
-      task endpoints "REST Endpoints" {
+      task endpoints "REST API Endpoints" {
         effort 15d
         allocate alice
         allocate bob
         depends !schema
         chargeset backend
+        journalentry 2026-06-23 "API progress" {
+          author alice
+          summary "Core CRUD endpoints implemented. Auth endpoints in progress.
+                   12 of 18 endpoints complete."
+        }
       }
 
-      task auth "Authentication" {
+      task auth "Authentication & Authorization" {
         effort 10d
         allocate alice
         depends !schema
+        chargeset backend
+      }
+
+      task background "Background Jobs & Queues" {
+        effort 5d
+        allocate bob
+        depends !endpoints
         chargeset backend
       }
     }
@@ -79,7 +110,7 @@ task acme "Acme Web Platform" {
         chargeset frontend
       }
 
-      task layouts "Page Layouts" {
+      task layouts "Page Layouts & Navigation" {
         effort 10d
         allocate bob
         depends !components
@@ -92,11 +123,20 @@ task acme "Acme Web Platform" {
         depends !layouts, acme.development.backend_api.endpoints
         chargeset frontend
       }
+
+      task responsive "Responsive & Accessibility" {
+        effort 5d
+        allocate carol
+        depends !layouts
+        chargeset design
+      }
     }
 
     task feature_complete "Feature Complete" {
       milestone
       depends !backend_api, !frontend
+      chargeset milestone2
+      charge 80000.0 onend
     }
   }
 
@@ -120,9 +160,16 @@ task acme "Acme Web Platform" {
       chargeset qa
     }
 
-    task performance "Performance Testing" {
+    task performance "Performance & Load Testing" {
       effort 5d
       allocate dave
+      depends !unit_tests
+      chargeset qa
+    }
+
+    task security "Security Audit" {
+      effort 5d
+      allocate alice
       depends !unit_tests
       chargeset qa
     }
@@ -137,7 +184,7 @@ task acme "Acme Web Platform" {
 
     task release_candidate "Release Candidate" {
       milestone
-      depends !unit_tests, !integration_tests, !performance, !uat
+      depends !unit_tests, !integration_tests, !performance, !security, !uat
     }
   }
 
@@ -147,13 +194,14 @@ task acme "Acme Web Platform" {
   task deployment "Phase 4: Deployment" {
     depends !testing.release_candidate
 
-    task infra "Infrastructure Setup" {
+    task infra "Infrastructure Provisioning" {
       effort 3d
       allocate alice
-      chargeset backend
+      chargeset hosting
+      charge 2500.0 onstart
     }
 
-    task staging "Staging Deployment" {
+    task staging "Staging Deployment & Smoke Tests" {
       effort 3d
       allocate alice
       allocate dave
@@ -168,9 +216,18 @@ task acme "Acme Web Platform" {
       chargeset backend
     }
 
+    task documentation "Operations Documentation" {
+      effort 3d
+      allocate bob
+      depends !staging
+      chargeset backend
+    }
+
     task go_live "Go Live" {
       milestone
-      depends !infra, !staging, !production
+      depends !infra, !staging, !production, !documentation
+      chargeset milestone3
+      charge 70000.0 onend
     }
   }
 }

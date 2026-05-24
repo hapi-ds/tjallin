@@ -1,0 +1,38 @@
+/* Actual Progress — Acme Web Platform
+ *
+ * Tracks actual completion status for the "actual" scenario.
+ * Demonstrates scenario-based tracking where planned vs actual
+ * can be compared in reports.
+ */
+
+supplement task acme.planning.requirements {
+  actual:complete 100
+}
+
+supplement task acme.planning.architecture {
+  actual:complete 100
+}
+
+supplement task acme.planning.wireframes {
+  actual:complete 100
+}
+
+supplement task acme.planning.planning_complete {
+  actual:complete 100
+}
+
+supplement task acme.development.backend_api.schema {
+  actual:complete 60
+}
+
+supplement task acme.development.backend_api.endpoints {
+  actual:complete 20
+}
+
+supplement task acme.development.backend_api.auth {
+  actual:complete 10
+}
+
+supplement task acme.development.frontend.components {
+  actual:complete 30
+}

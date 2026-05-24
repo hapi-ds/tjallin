@@ -1,15 +1,16 @@
 /* Report Definitions — Acme Web Platform
  *
- * Five report types demonstrating TaskJuggler's reporting flexibility:
- * - GanttChart: visual project timeline with dependencies and critical path
- * - ResourceUsage: resource allocation and utilization over time
- * - TaskList: flat task listing with key metrics
- * - CostReport: financial breakdown by cost account
- * - JournalReport: project journal entries sorted by date
+ * Comprehensive reports demonstrating TaskJuggler's reporting:
+ * - Gantt Chart: visual timeline with dependencies and critical path
+ * - Resource Usage: allocation and utilization over time
+ * - Task List: flat listing with effort, cost, and completion
+ * - Cost Report: financial breakdown by cost account (EUR)
+ * - Revenue Report: income by milestone
+ * - Project Journal: status updates and notes
  */
 
 /* -------------------------------------------------------------------
- * Macros — Reusable tooltip definitions for chart columns
+ * Macros — Reusable tooltip definitions
  * ------------------------------------------------------------------- */
 macro TaskTip [
   tooltip istask() -8<-
@@ -18,6 +19,7 @@ macro TaskTip [
     ----
     '''Effort: ''' <-query attribute='effort'->
     '''Duration: ''' <-query attribute='duration'->
+    '''Cost: ''' <-query attribute='cost'-> ''' EUR'''
   ->8-
 ]
 
@@ -26,94 +28,96 @@ macro ResourceTip [
     '''Resource: ''' <-query attribute='name'->
     ----
     '''Effort: ''' <-query attribute='effort'->
+    '''Rate: ''' <-query attribute='rate'-> ''' EUR/h'''
   ->8-
 ]
 
 /* -------------------------------------------------------------------
- * GanttChart — Full project Gantt chart
- * Shows dependencies, milestones, and critical path highlighting.
+ * Gantt Chart — Full project timeline
  * ------------------------------------------------------------------- */
 taskreport GanttChart "Gantt Chart" {
   formats html
   headline "Acme Web Platform — Project Gantt Chart"
+  balance cost revenue
   columns bsi { title "WBS" },
          name,
          start { title "Start" },
          end { title "End" },
          effort,
          duration,
+         cost { title "Cost (EUR)" },
          chart { ${TaskTip} scale week width 800 }
   timeformat "%Y-%m-%d"
   loadunit days
   hideresource @all
-  caption "Project schedule with task dependencies and milestones.
-           Critical path tasks are highlighted."
+  caption "Project schedule with dependencies, milestones, and cost per task in EUR."
 }
 
 /* -------------------------------------------------------------------
- * ResourceUsage — Resource allocation over time
- * Shows utilization percentages and scheduling conflicts.
+ * Resource Usage — Allocation over time
  * ------------------------------------------------------------------- */
 resourcereport ResourceUsage "Resource Usage" {
   formats html
   headline "Acme Web Platform — Resource Utilization"
+  balance cost revenue
   columns no,
          name,
          effort,
+         rate,
          weekly { ${ResourceTip} width 800 }
   timeformat "%Y-%m-%d"
   loadunit hours
   hidetask ~(isleaf() & isvalid(plan.effort))
-  caption "Resource allocation showing weekly utilization.
-           Over-allocated periods indicate scheduling conflicts resolved by the scheduler."
+  caption "Weekly resource allocation showing utilization and hourly rates in EUR."
 }
 
 /* -------------------------------------------------------------------
- * TaskList — Flat task list with key metrics
- * Shows start/end dates, effort, cost, and completion status.
+ * Task List — Detailed task metrics
  * ------------------------------------------------------------------- */
 taskreport TaskList "Task List" {
   formats html
   headline "Acme Web Platform — Task List"
+  balance cost revenue
   columns bsi { title "WBS" },
          name,
          start { title "Start" },
          end { title "End" },
          effort,
-         cost,
+         cost { title "Cost (EUR)" },
+         revenue { title "Revenue (EUR)" },
          complete,
          status { width 150 }
   timeformat "%Y-%m-%d"
   loadunit days
   hideresource @all
   sorttasks plan.start.up
-  caption "Complete task listing with schedule, effort, cost, and completion status."
+  caption "Complete task listing with schedule, effort, cost, revenue, and completion."
 }
 
 /* -------------------------------------------------------------------
- * CostReport — Financial breakdown by cost account
- * Shows planned costs broken down by account hierarchy.
+ * Cost Report — Financial breakdown by account
  * ------------------------------------------------------------------- */
 accountreport CostReport "Cost Report" {
   formats html
-  headline "Acme Web Platform — Financial Summary"
+  headline "Acme Web Platform — Cost Breakdown (EUR)"
   columns no,
          name,
          cost,
-         weekly
+         revenue,
+         monthly
   timeformat "%Y-%m-%d"
-  caption "Financial breakdown by cost account showing planned expenditure over time."
+  caption "Monthly financial breakdown by cost account. All amounts in EUR."
 }
 
 /* -------------------------------------------------------------------
- * JournalReport — Project journal entries
- * Shows status updates and notes recorded against tasks, sorted by
- * date (newest first). Tasks without journal entries are hidden.
+ * Project Journal — Status updates
  * ------------------------------------------------------------------- */
 taskreport JournalReport "Project Journal" {
   formats html
-  headline "Project Journal"
+  headline "Acme Web Platform — Project Journal"
+  balance cost revenue
   columns name, journal
   journalmode journal
   journalattributes headline, author, date, summary
+  caption "Status updates and decisions recorded throughout the project."
 }

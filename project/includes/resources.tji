@@ -1,44 +1,46 @@
 /* Resource Definitions — Acme Web Platform
  *
- * Defines team members with varying working hours, rates, skills,
- * and vacation periods to demonstrate TaskJuggler's resource
- * scheduling capabilities.
+ * Team members with rates in EUR/hour, working hours, skills,
+ * and vacation periods for 2026.
  */
 
-resource alice "Alice" {
-  /* Senior Developer — full-time Mon–Fri */
+resource alice "Alice Lindström" {
+  /* Senior Backend Developer — full-time */
   workinghours mon - fri 9:00 - 17:00
   workinghours sat, sun off
-  rate 950.0
-  vacation "Winter Break" 2024-02-19 - 2024-02-24
+  rate 95.0
+  vacation "Midsommar" 2026-06-19 - 2026-06-21
+  vacation "Summer Holiday" 2026-07-06 - 2026-07-26
 }
 
-resource bob "Bob" {
-  /* Full-Stack Developer — full-time Mon–Fri */
+resource bob "Bob Eriksson" {
+  /* Full-Stack Developer — full-time */
   workinghours mon - fri 9:00 - 17:00
   workinghours sat, sun off
-  rate 800.0
-  vacation "Easter" 2024-03-25 - 2024-03-30
+  rate 85.0
+  vacation "Summer Holiday" 2026-07-13 - 2026-08-02
 }
 
-resource carol "Carol" {
-  /* UX Designer — 6h/day Mon–Thu only */
+resource carol "Carol Johansson" {
+  /* UX Designer — 6h/day Mon–Thu */
   workinghours mon - thu 9:00 - 15:00
   workinghours fri, sat, sun off
-  rate 750.0
+  rate 80.0
+  vacation "Midsommar" 2026-06-19 - 2026-06-21
 }
 
-resource dave "Dave" {
-  /* QA Engineer — full-time Mon–Fri */
+resource dave "Dave Nilsson" {
+  /* QA Engineer — full-time */
   workinghours mon - fri 9:00 - 17:00
   workinghours sat, sun off
-  rate 700.0
-  vacation "Spring Break" 2024-04-01 - 2024-04-06
+  rate 75.0
+  vacation "Summer Holiday" 2026-07-20 - 2026-08-09
 }
 
-resource eve "Eve" {
-  /* Project Manager — 4h/day Mon–Fri */
+resource eve "Eve Andersson" {
+  /* Project Manager — 4h/day */
   workinghours mon - fri 9:00 - 13:00
   workinghours sat, sun off
-  rate 900.0
+  rate 100.0
+  vacation "Midsommar" 2026-06-19 - 2026-06-21
 }

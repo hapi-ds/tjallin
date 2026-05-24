@@ -1,13 +1,28 @@
+/* Account Definitions — Acme Web Platform
+ *
+ * Hierarchical cost and revenue accounts in EUR.
+ * Demonstrates cost tracking by category and revenue recognition.
+ */
+
 account cost "Project Costs" {
   account dev "Development" {
     account backend "Backend Development"
     account frontend "Frontend Development"
   }
-  account design "Design"
+  account design "Design & UX"
   account qa "Quality Assurance"
   account mgmt "Project Management"
+  account infra "Infrastructure" {
+    account hosting "Cloud Hosting"
+    account licenses "Software Licenses"
+  }
 }
 
 account revenue "Revenue" {
-  account contract "Contract Payment"
+  account contract "Contract Payments" {
+    account milestone1 "Milestone 1 — Planning Complete"
+    account milestone2 "Milestone 2 — Feature Complete"
+    account milestone3 "Milestone 3 — Go Live"
+  }
+  account maintenance "Maintenance Contract"
 }
