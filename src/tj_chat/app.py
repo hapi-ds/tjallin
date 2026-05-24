@@ -13,6 +13,7 @@ from nicegui import app, ui
 
 from tj_chat.pages.admin import AdminPageUI
 from tj_chat.pages.chat import ChatPageUI
+from tj_chat.pages.editor import EditorPageUI
 from tj_chat.pages.home import HomePageUI
 from tj_chat.pages.reports import ReportsPageUI
 from tj_chat.settings import ChatSettings
@@ -24,15 +25,27 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def _nav_header() -> None:
-    """Render the shared navigation header used across all pages."""
+def _nav_header(current_path: str = "/") -> None:
+    """Render the shared navigation header used across all pages.
+
+    Args:
+        current_path: The current page path, used to highlight the active link.
+    """
+    links = [
+        ("Home", "/"),
+        ("Reports", "/reports"),
+        ("Admin", "/admin"),
+        ("Editor", "/editor"),
+        ("Chat", "/chat"),
+    ]
     with ui.header().classes("items-center justify-between"):
         ui.label("tjallin").classes("text-h6 font-bold")
         with ui.row().classes("gap-4"):
-            ui.link("Home", "/").classes("text-white")
-            ui.link("Reports", "/reports").classes("text-white")
-            ui.link("Admin", "/admin").classes("text-white")
-            ui.link("Chat", "/chat").classes("text-white")
+            for label, path in links:
+                classes = "text-white"
+                if current_path == path:
+                    classes += " font-bold underline"
+                ui.link(label, path).classes(classes)
 
 
 def create_app() -> None:
@@ -89,21 +102,21 @@ def create_app() -> None:
     @ui.page("/")
     def home_page() -> None:
         """Home page with project status summary."""
-        _nav_header()
+        _nav_header("/")
         page = HomePageUI(settings=settings)
         page.setup()
 
     @ui.page("/reports")
     def reports_page() -> None:
         """Reports page listing TaskJuggler-generated HTML reports."""
-        _nav_header()
+        _nav_header("/reports")
         page = ReportsPageUI(reports_dir=settings.reports_path)
         page.setup()
 
     @ui.page("/admin")
     def admin_page() -> None:
         """Admin page with compilation triggers and system status."""
-        _nav_header()
+        _nav_header("/admin")
         page = AdminPageUI(
             project_dir=settings.project_path,
             reports_dir=settings.reports_path,
@@ -114,10 +127,33 @@ def create_app() -> None:
     @ui.page("/chat")
     def chat_page() -> None:
         """Chat page with the LLM agent conversational interface."""
-        _nav_header()
+        _nav_header("/chat")
         chat_service = _get_chat_service()
         tj_docs = _get_tj_docs()
         page = ChatPageUI(chat_service=chat_service, tj_docs=tj_docs)
+        page.setup()
+
+    @ui.page("/editor")
+    def editor_page() -> None:
+        """Editor page with file tree, code editor, and helper panel."""
+        from tj_chat.editor_service import EditorService
+        from tj_chat.helper_service import HelperService
+
+        _nav_header("/editor")
+        tj_docs = _get_tj_docs()
+        editor_service = EditorService(
+            project_dir=settings.project_path,
+            settings=settings,
+        )
+        helper_service = HelperService(
+            settings=settings,
+            tj_docs=tj_docs,
+        )
+        page = EditorPageUI(
+            editor_service=editor_service,
+            helper_service=helper_service,
+            settings=settings,
+        )
         page.setup()
 
 
