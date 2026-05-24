@@ -286,12 +286,15 @@ class TestBuildEditorContext:
 
         page = _make_page()
         _setup_helper_ui(page)
-        page._editor_service.build_file_tree.return_value = [
+        file_nodes = [
             FileNode(name="main.tjp", path="main.tjp", is_directory=False, file_type="tjp"),
             FileNode(name="includes", path="includes", is_directory=True, children=[
                 FileNode(name="resources.tji", path="includes/resources.tji", is_directory=False, file_type="tji"),
             ]),
         ]
+        page._editor_service.build_file_tree.return_value = file_nodes
+        # Update the cached nodes (normally populated during __init__)
+        page._cached_file_nodes = file_nodes
 
         context = page._build_editor_context()
 

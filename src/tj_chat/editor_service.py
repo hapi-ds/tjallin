@@ -225,15 +225,21 @@ class EditorService:
             backup_path=backup_path,
         )
 
-    def _build_tree(self, directory: Path) -> list[FileNode]:
+    def _build_tree(self, directory: Path, _depth: int = 0) -> list[FileNode]:
         """Recursively build file tree nodes for a directory.
 
         Args:
             directory: The directory to enumerate.
+            _depth: Current recursion depth (guards against symlink loops).
 
         Returns:
             Sorted list of FileNode instances for the directory contents.
         """
+        # Guard against symlink loops or excessively deep trees
+        if _depth > 20:
+            logger.warning("Max depth reached at %s, stopping recursion", directory)
+            return []
+
         nodes: list[FileNode] = []
 
         try:
@@ -245,6 +251,10 @@ class EditorService:
         for entry in entries:
             # Exclude hidden entries (names starting with '.')
             if entry.name.startswith("."):
+                continue
+
+            # Skip symlinks to avoid infinite loops
+            if entry.is_symlink():
                 continue
 
             # Validate path through PathSafetyModule
@@ -260,7 +270,7 @@ class EditorService:
             relative_path = str(entry.relative_to(self._project_dir))
 
             if entry.is_dir():
-                children = self._build_tree(entry)
+                children = self._build_tree(entry, _depth + 1)
                 node = FileNode(
                     name=entry.name,
                     path=relative_path,

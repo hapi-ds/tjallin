@@ -58,6 +58,13 @@ class EditorPageUI:
         self._helper_expanded: bool = True
         self._editor: CodeMirror | None = None
         self._error_panel: ui.expansion | None = None
+        self._cached_file_nodes: list[FileNode] = []
+        self._loading_file: bool = False
+        # Pre-cache the file tree for directory lookups and context assembly
+        try:
+            self._cached_file_nodes = self._editor_service.build_file_tree()
+        except Exception:
+            pass
         self._save_spinner: ui.spinner | None = None
         self._helper_loading: bool = False
         self._conversation: list[dict[str, str]] = []
@@ -77,11 +84,9 @@ class EditorPageUI:
         # Bind Ctrl+S keyboard shortcut to save
         ui.keyboard(on_key=self._on_keyboard)
 
-        # Main container with responsive layout
-        # At ≥1024px: flex-row (side-by-side)
-        # Below 1024px: flex-col (stacked)
-        with ui.element("div").classes(
-            "w-full h-[calc(100vh-80px)] flex flex-col lg:flex-row gap-2 p-2"
+        # Main container — horizontal row with full height
+        with ui.row().classes("w-full no-wrap").style(
+            "height: calc(100vh - 80px); gap: 8px; padding: 8px;"
         ):
             # Left panel: File tree (~20% width)
             self._render_file_tree_panel()
@@ -99,13 +104,13 @@ class EditorPageUI:
         collapsible NiceGUI tree component with distinct icons for .tjp,
         .tji, and other file types. Directories are collapsed by default.
         """
-        with ui.card().classes(
-            "w-full lg:w-1/5 h-64 lg:h-full overflow-auto"
+        with ui.card().classes("overflow-auto").style(
+            "width: 20%; height: 100%; min-width: 180px;"
         ):
             ui.label("Project Files").classes("text-subtitle1 font-bold mb-2")
-            # Build tree data from the editor service
-            file_nodes = self._editor_service.build_file_tree()
-            tree_data = self._build_tree_data(file_nodes)
+            # Build tree data from the editor service (cached for lookups)
+            self._cached_file_nodes = self._editor_service.build_file_tree()
+            tree_data = self._build_tree_data(self._cached_file_nodes)
             self._file_tree = ui.tree(
                 tree_data,
                 label_key="label",
@@ -121,8 +126,8 @@ class EditorPageUI:
         is loaded, displays a CodeMirror editor with TJ syntax highlighting,
         line numbers, and monospace font.
         """
-        with ui.card().classes(
-            "w-full lg:w-1/2 h-96 lg:h-full flex flex-col"
+        with ui.card().classes("flex flex-col").style(
+            "width: 50%; height: 100%; flex: 1 1 auto;"
         ):
             # Editor header with file path, dirty indicator, and save button
             with ui.row().classes("w-full items-center justify-between mb-2"):
@@ -177,8 +182,8 @@ class EditorPageUI:
         - Error messages inline with retry button
         - Text input (max 2000 chars) for user messages
         """
-        with ui.card().classes(
-            "w-full lg:w-[30%] h-80 lg:h-full flex flex-col"
+        with ui.card().classes("flex flex-col").style(
+            "width: 30%; height: 100%; min-width: 250px;"
         ):
             # Header with title and collapse toggle
             with ui.row().classes("w-full items-center justify-between mb-2"):
@@ -257,17 +262,22 @@ class EditorPageUI:
         # Hide placeholder, show editor
         self._placeholder.set_visibility(False)
 
-        # Create or update the CodeMirror editor
-        if self._editor is None:
-            with self._editor_container:
-                self._editor = ui.codemirror(
-                    value=result.content,
-                    on_change=self._on_editor_change,
-                    language=None,  # Custom TJ mode injected via JS
-                    theme="vscodeDark",
-                ).classes("w-full h-full font-mono")
-        else:
-            self._editor.value = result.content
+        # Always recreate the CodeMirror editor within the correct container
+        # to avoid NiceGUI slot context issues across async boundaries.
+        # Remove old editor if it exists.
+        if self._editor is not None:
+            self._editor_container.remove(self._editor)
+            self._editor = None
+
+        self._loading_file = True
+        with self._editor_container:
+            self._editor = ui.codemirror(
+                value=result.content,
+                on_change=self._on_editor_change,
+                language=None,  # Custom TJ mode injected via JS
+                theme="vscodeDark",
+            ).classes("w-full h-full font-mono")
+        self._loading_file = False
 
         # Enable save button
         self._save_button.props(remove="disable")
@@ -279,9 +289,14 @@ class EditorPageUI:
         """Handle editor content changes to track dirty state.
 
         Sets the dirty flag and shows an asterisk in the file path header
-        to indicate unsaved changes.
+        to indicate unsaved changes. Ignores changes triggered by
+        programmatic value updates during file loading.
         """
         if self._current_file is None:
+            return
+
+        # Ignore changes triggered by programmatic file loading
+        if getattr(self, "_loading_file", False):
             return
 
         if not self._is_dirty:
@@ -466,11 +481,12 @@ class EditorPageUI:
             # so we default to line 1 if not available
             cursor_line = 1
 
-        # Get project file list from the editor service
+        # Get project file list from the cached tree
         project_files: list[str] = []
         try:
-            file_nodes = self._editor_service.build_file_tree()
-            project_files = self._collect_file_paths(file_nodes)
+            nodes = getattr(self, "_cached_file_nodes", None)
+            if nodes:
+                project_files = self._collect_file_paths(nodes)
         except Exception:
             pass
 
@@ -800,8 +816,8 @@ class EditorPageUI:
     def _is_directory_node(self, path: str) -> bool:
         """Check if a path corresponds to a directory in the file tree.
 
-        Searches the file tree data recursively to determine if the
-        given path belongs to a directory node.
+        Uses the cached file tree data from initial render to avoid
+        re-scanning the filesystem on every click.
 
         Args:
             path: Relative path to check.
@@ -809,8 +825,10 @@ class EditorPageUI:
         Returns:
             True if the path is a directory node, False otherwise.
         """
-        file_nodes = self._editor_service.build_file_tree()
-        return self._find_directory_in_nodes(file_nodes, path)
+        nodes = getattr(self, "_cached_file_nodes", None)
+        if nodes is None:
+            return False
+        return self._find_directory_in_nodes(nodes, path)
 
     def _find_directory_in_nodes(
         self, nodes: list[FileNode], path: str
