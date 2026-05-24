@@ -1,6 +1,8 @@
 # tjallin 
 
-(from "TaskJuggler All-In") provides an out-of-the-box, fully containerized environment for TaskJuggler, the powerful text-based project management tool. By leveraging Docker Compose, this setup orchestrates everything you need into a single stack: the TaskJuggler core, an automated web server to host compiled HTML reports with cross-linked navigation, and a self-contained mail service with SMTP and IMAP for managing project communications and automated alerts.
+from "TaskJuggler All-In", as a surname it is the diminutive form of the Old Frisian name Tjal, meaning to rule or to govern.
+
+Tjallin provides an out-of-the-box, fully containerized environment for TaskJuggler, the powerful text-based project management tool. By leveraging Docker Compose, this setup orchestrates everything you need into a single stack: the TaskJuggler core, an automated web server to host compiled HTML reports with cross-linked navigation, and a self-contained mail service with SMTP and IMAP for managing project communications and automated alerts.
 
 Clone, configure, and run — reports are visible in your browser within minutes. No external SMTP relay or mail credentials required.
 
