@@ -1,10 +1,10 @@
-project acme_web "Acme Web Platform" 2024-01-15 +26w {
+project acme_web "Acme Web Platform" 2026-05-24 +26w {
   timezone "Europe/Stockholm"
   timeformat "%Y-%m-%d"
   numberformat "-" "" "," "." 1
   currencyformat "(" ")" "," "." 0
   currency "SEK"
-  now 2024-02-05
+  now 2026-05-24
   trackingscenario plan
 }
 
