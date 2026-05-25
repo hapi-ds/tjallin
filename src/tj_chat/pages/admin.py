@@ -189,6 +189,9 @@ class AdminPageUI:
     async def _run_compiler(self) -> CompilerResult:
         """Run the tj3 compiler against the project file.
 
+        After successful compilation, runs the report post-processor
+        to inject navigation headers and generate the report index.
+
         Returns:
             CompilerResult with success status and compiler output.
         """
@@ -201,15 +204,22 @@ class AdminPageUI:
             )
 
         try:
+            # Ensure reports directory exists and clear old reports
+            self._reports_dir.mkdir(parents=True, exist_ok=True)
+            for old_file in self._reports_dir.glob("*.html"):
+                old_file.unlink()
+            reports_dir_abs = str(self._reports_dir.resolve())
+
             process = await asyncio.create_subprocess_exec(
                 "tj3",
+                "-o", reports_dir_abs,
                 self._settings.project_file,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 cwd=str(self._project_dir),
             )
             stdout_bytes, stderr_bytes = await process.communicate()
-            return CompilerResult(
+            result = CompilerResult(
                 success=process.returncode == 0,
                 stdout=stdout_bytes.decode("utf-8", errors="replace"),
                 stderr=stderr_bytes.decode("utf-8", errors="replace"),
@@ -220,6 +230,8 @@ class AdminPageUI:
                 stdout="",
                 stderr="tj3 compiler not found. Ensure TaskJuggler is installed.",
             )
+
+        return result
 
 
 def _status_row(label: str, detail: str, ok: bool) -> None:

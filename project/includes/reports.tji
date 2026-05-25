@@ -1,17 +1,13 @@
 /* Report Definitions — Acme Web Platform
  *
- * Comprehensive reports demonstrating TaskJuggler's reporting:
- * - Gantt Chart: visual timeline with dependencies and critical path
- * - Resource Usage: allocation and utilization over time
- * - Task List: flat listing with effort, cost, and completion
- * - Cost Report: financial breakdown by cost account (EUR)
- * - Revenue Report: income by milestone
- * - Project Journal: status updates and notes
+ * Uses a single textreport frame with navigator for cross-report
+ * navigation. All reports are nested inside the frame.
  */
 
-/* -------------------------------------------------------------------
- * Macros — Reusable tooltip definitions
- * ------------------------------------------------------------------- */
+navigator navbar {
+  hidereport @none
+}
+
 macro TaskTip [
   tooltip istask() -8<-
     '''Start: ''' <-query attribute='start'->
@@ -32,92 +28,81 @@ macro ResourceTip [
   ->8-
 ]
 
-/* -------------------------------------------------------------------
- * Gantt Chart — Full project timeline
- * ------------------------------------------------------------------- */
-taskreport GanttChart "Gantt Chart" {
+textreport frame "Reports" {
   formats html
-  headline "Acme Web Platform — Project Gantt Chart"
   balance cost revenue
-  columns bsi { title "WBS" },
-         name,
-         start { title "Start" },
-         end { title "End" },
-         effort,
-         duration,
-         cost { title "Cost (EUR)" },
-         chart { ${TaskTip} scale week width 800 }
-  timeformat "%Y-%m-%d"
-  loadunit days
-  hideresource @all
-  caption "Project schedule with dependencies, milestones, and cost per task in EUR."
-}
 
-/* -------------------------------------------------------------------
- * Resource Usage — Allocation over time
- * ------------------------------------------------------------------- */
-resourcereport ResourceUsage "Resource Usage" {
-  formats html
-  headline "Acme Web Platform — Resource Utilization"
-  balance cost revenue
-  columns no,
-         name,
-         effort,
-         rate,
-         weekly { ${ResourceTip} width 800 }
-  timeformat "%Y-%m-%d"
-  loadunit hours
-  hidetask ~(isleaf() & isvalid(plan.effort))
-  caption "Weekly resource allocation showing utilization and hourly rates in EUR."
-}
+  header -8<-
+    == Acme Web Platform ==
+    <[navigator id="navbar"]>
+  ->8-
+  footer "----"
 
-/* -------------------------------------------------------------------
- * Task List — Detailed task metrics
- * ------------------------------------------------------------------- */
-taskreport TaskList "Task List" {
-  formats html
-  headline "Acme Web Platform — Task List"
-  balance cost revenue
-  columns bsi { title "WBS" },
-         name,
-         start { title "Start" },
-         end { title "End" },
-         effort,
-         cost { title "Cost (EUR)" },
-         revenue { title "Revenue (EUR)" },
-         complete,
-         status { width 150 }
-  timeformat "%Y-%m-%d"
-  loadunit days
-  hideresource @all
-  sorttasks plan.start.up
-  caption "Complete task listing with schedule, effort, cost, revenue, and completion."
-}
+  taskreport gantt "Gantt Chart" {
+    scenarios plan, actual
+    headline "Project Gantt Chart"
+    columns bsi { title "WBS" },
+           name,
+           start { title "Start" },
+           end { title "End" },
+           effort,
+           duration,
+           cost { title "Cost (EUR)" },
+           complete,
+           chart { ${TaskTip} scale week width 800 }
+    timeformat "%Y-%m-%d"
+    loadunit days
+    hideresource @all
+    caption "Project schedule with dependencies, milestones, and cost per task in EUR."
+  }
 
-/* -------------------------------------------------------------------
- * Cost Report — Financial breakdown by account
- * ------------------------------------------------------------------- */
-accountreport CostReport "Cost Report" {
-  formats html
-  headline "Acme Web Platform — Cost Breakdown (EUR)"
-  columns no,
-         name,
-         cost,
-         revenue,
-         monthly
-  timeformat "%Y-%m-%d"
-  caption "Monthly financial breakdown by cost account. All amounts in EUR."
-}
+  resourcereport resources "Resource Usage" {
+    headline "Resource Utilization"
+    columns no,
+           name,
+           effort,
+           rate,
+           weekly { ${ResourceTip} width 800 }
+    timeformat "%Y-%m-%d"
+    loadunit hours
+    hidetask ~(isleaf() & isvalid(plan.effort))
+    caption "Weekly resource allocation showing utilization and hourly rates in EUR."
+  }
 
-/* -------------------------------------------------------------------
- * Project Journal — Status updates
- * ------------------------------------------------------------------- */
-taskreport JournalReport "Project Journal" {
-  formats html
-  headline "Acme Web Platform — Project Journal"
-  balance cost revenue
-  columns name, journal
-  journalmode journal
-  journalattributes headline, author, date, summary
-  caption "Status updates and decisions recorded throughout the project."
+  taskreport tasklist "Task List" {
+    headline "Task List"
+    columns bsi { title "WBS" },
+           name,
+           start { title "Start" },
+           end { title "End" },
+           effort,
+           cost { title "Cost (EUR)" },
+           revenue { title "Revenue (EUR)" },
+           complete,
+           status { width 150 }
+    timeformat "%Y-%m-%d"
+    loadunit days
+    hideresource @all
+    sorttasks plan.start.up
+    caption "Complete task listing with schedule, effort, cost, revenue, and completion."
+  }
+
+  accountreport costs "Cost Report" {
+    headline "Cost Breakdown (EUR)"
+    columns no,
+           name,
+           cost,
+           revenue,
+           monthly
+    timeformat "%Y-%m-%d"
+    caption "Monthly financial breakdown by cost account. All amounts in EUR."
+  }
+
+  taskreport journal "Project Journal" {
+    headline "Project Journal"
+    columns name, journal
+    journalmode journal
+    journalattributes headline, author, date, summary
+    caption "Status updates and decisions recorded throughout the project."
+  }
 }
