@@ -126,8 +126,8 @@ class EditorPageUI:
         is loaded, displays a CodeMirror editor with TJ syntax highlighting,
         line numbers, and monospace font.
         """
-        with ui.card().classes("flex flex-col").style(
-            "width: 50%; height: 100%; flex: 1 1 auto;"
+        with ui.card().classes("flex flex-col overflow-hidden").style(
+            "width: 50%; height: 100%; flex: 1 1 auto; min-height: 0;"
         ):
             # Editor header with file path, dirty indicator, and save button
             with ui.row().classes("w-full items-center justify-between mb-2"):
@@ -153,8 +153,8 @@ class EditorPageUI:
 
             # Editor content area
             self._editor_container = ui.column().classes(
-                "w-full flex-grow relative"
-            )
+                "w-full flex-grow"
+            ).style("min-height: 0; overflow: hidden;")
             with self._editor_container:
                 # Placeholder message when no file is selected
                 self._placeholder = ui.column().classes(
@@ -262,12 +262,11 @@ class EditorPageUI:
         # Hide placeholder, show editor
         self._placeholder.set_visibility(False)
 
-        # Always recreate the CodeMirror editor within the correct container
-        # to avoid NiceGUI slot context issues across async boundaries.
-        # Remove old editor if it exists.
+        # Always recreate the CodeMirror editor within the correct container.
+        # Clear the container completely to avoid slot context issues.
         if self._editor is not None:
-            self._editor_container.remove(self._editor)
             self._editor = None
+            self._editor_container.clear()
 
         self._loading_file = True
         with self._editor_container:
@@ -276,7 +275,7 @@ class EditorPageUI:
                 on_change=self._on_editor_change,
                 language=None,  # Custom TJ mode injected via JS
                 theme="vscodeDark",
-            ).classes("w-full h-full font-mono")
+            ).classes("w-full font-mono").style("height: calc(100vh - 200px);")
         self._loading_file = False
 
         # Enable save button

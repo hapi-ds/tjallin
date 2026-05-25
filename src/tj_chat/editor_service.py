@@ -98,11 +98,10 @@ class EditorService:
         )
 
     async def save_file(self, relative_path: str, content: str) -> SaveResult:
-        """Save file with temp-write → compile → backup → persist workflow.
+        """Save file with backup → write → compile → rollback-on-failure workflow.
 
-        Validates the path through PathSafetyModule, writes content to a
-        temporary file, runs the tj3 compiler for validation, and only
-        persists on success (with backup of the original).
+        Validates the path, creates a backup, writes the new content,
+        validates the project with tj3, and rolls back if compilation fails.
 
         Args:
             relative_path: Path relative to the project root.
@@ -125,25 +124,43 @@ class EditorService:
                 errors=["Security error: path is outside the project boundary"],
             )
 
-        # 2. Write content to a temporary file within the project directory
-        temp_path = resolved_target.with_suffix(
-            resolved_target.suffix + ".tmp"
-        )
+        # 2. Create backup of original file (if it exists)
+        backup_path: str | None = None
+        original_content: str | None = None
+        if resolved_target.exists():
+            original_content = resolved_target.read_text(encoding="utf-8")
+            bak_path = resolved_target.with_suffix(
+                resolved_target.suffix + ".bak"
+            )
+            try:
+                shutil.copy2(resolved_target, bak_path)
+                backup_path = str(bak_path.relative_to(self._project_dir))
+            except OSError as e:
+                logger.error(
+                    "Failed to create backup for %s: %s", relative_path, e
+                )
+                return SaveResult(
+                    success=False,
+                    errors=[f"Backup creation failed: {e}"],
+                )
+
+        # 3. Write new content to the target file
         try:
-            temp_path.parent.mkdir(parents=True, exist_ok=True)
-            temp_path.write_text(content, encoding="utf-8")
+            resolved_target.parent.mkdir(parents=True, exist_ok=True)
+            resolved_target.write_text(content, encoding="utf-8")
         except OSError as e:
-            logger.error("Failed to write temp file %s: %s", temp_path, e)
+            logger.error("Failed to write file %s: %s", relative_path, e)
             return SaveResult(
                 success=False,
-                errors=[f"Failed to write temporary file: {e}"],
+                errors=[f"Failed to write file: {e}"],
             )
 
-        # 3. Run tj3 compiler validation on the temp file with 30s timeout
+        # 4. Validate by compiling the main project file with tj3
         try:
             process = await asyncio.create_subprocess_exec(
                 "tj3",
-                str(temp_path),
+                "--check-syntax",
+                self._settings.project_file,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 cwd=str(self._project_dir),
@@ -154,8 +171,9 @@ class EditorService:
             compiler_success = process.returncode == 0
             compiler_stderr = stderr_bytes.decode("utf-8", errors="replace")
         except FileNotFoundError:
-            # tj3 binary not found
-            temp_path.unlink(missing_ok=True)
+            # tj3 not found — rollback and report
+            if original_content is not None:
+                resolved_target.write_text(original_content, encoding="utf-8")
             return SaveResult(
                 success=False,
                 errors=[
@@ -163,19 +181,22 @@ class EditorService:
                 ],
             )
         except asyncio.TimeoutError:
-            # Compiler timed out — kill the process and clean up
             process.kill()  # type: ignore[union-attr]
             await process.wait()  # type: ignore[union-attr]
-            temp_path.unlink(missing_ok=True)
+            if original_content is not None:
+                resolved_target.write_text(original_content, encoding="utf-8")
             return SaveResult(
                 success=False,
                 errors=["Compiler validation timed out after 30 seconds."],
             )
 
-        # 4. Handle compiler result
+        # 5. Handle compiler result
         if not compiler_success:
-            # Compilation failed — remove temp file, return errors
-            temp_path.unlink(missing_ok=True)
+            # Rollback: restore original content
+            if original_content is not None:
+                resolved_target.write_text(original_content, encoding="utf-8")
+            else:
+                resolved_target.unlink(missing_ok=True)
             errors = [
                 line
                 for line in compiler_stderr.strip().splitlines()
@@ -185,41 +206,7 @@ class EditorService:
                 errors = ["Compilation failed with unknown error."]
             return SaveResult(success=False, errors=errors)
 
-        # 5. Compiler succeeded — create backup and persist
-        backup_path: str | None = None
-        if resolved_target.exists():
-            bak_path = resolved_target.with_suffix(
-                resolved_target.suffix + ".bak"
-            )
-            try:
-                shutil.copy2(resolved_target, bak_path)
-                backup_path = str(bak_path.relative_to(self._project_dir))
-            except OSError as e:
-                # Backup creation failed — abort save
-                logger.error(
-                    "Failed to create backup for %s: %s", relative_path, e
-                )
-                temp_path.unlink(missing_ok=True)
-                return SaveResult(
-                    success=False,
-                    errors=[f"Backup creation failed: {e}"],
-                )
-
-        # 6. Persist new content to target and remove temp file
-        try:
-            resolved_target.write_text(content, encoding="utf-8")
-        except OSError as e:
-            logger.error(
-                "Failed to persist content to %s: %s", relative_path, e
-            )
-            temp_path.unlink(missing_ok=True)
-            return SaveResult(
-                success=False,
-                errors=[f"Failed to write file: {e}"],
-            )
-
-        temp_path.unlink(missing_ok=True)
-
+        # 6. Success — file is already written, backup exists
         return SaveResult(
             success=True,
             backup_path=backup_path,
